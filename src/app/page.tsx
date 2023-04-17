@@ -60,7 +60,7 @@ export default function Home() {
           const opacity = index === 0 ? 1 : opacityScale(sentence.distance);
           return (
             <span style={{ color: `rgba(0,0,0,${opacity})` }} key={index}>
-              {sentence.sentence}
+              {sentence.sentence}{" "}
             </span>
           );
         })}
