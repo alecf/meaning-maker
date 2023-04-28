@@ -9,13 +9,14 @@ const inter = Inter({ subsets: ["latin"] });
 
 export default function Home() {
   const [input, setInput] = useState("");
+  const [windowSize, setWindowSize] = useState("8");
   const { trigger, data, isMutating } = useSWRMutation("embedded", async () => {
     // Wikipedia references confuse the splitter
     const inputWithWikiReferencesFixed = input.replace(
       /\.(\[[0-9]+\])/g,
       ". $1"
     );
-    const response = await fetch("/api/embeddoc", {
+    const response = await fetch(`/api/embeddoc?window_size=${windowSize}`, {
       body: inputWithWikiReferencesFixed,
       method: "POST",
     });
@@ -52,9 +53,19 @@ export default function Home() {
           onChange={(e) => setInput(e.target.value)}
         ></textarea>
       </div>
-      <div>
-        <button onClick={() => trigger()} disabled={isMutating}>
-          submit {isMutating && <Spinner />}
+      <div className="flex gap-2">
+        <label>
+          Window size:{" "}
+          <input
+            type="number"
+            value={windowSize}
+            onChange={(e) => setWindowSize(e.target.value)}
+          />
+        </label>
+        <button type="button" onClick={() => trigger()} disabled={isMutating}>
+          <span className="whitespace-nowrap">
+            submit {isMutating && <Spinner />}
+          </span>
         </button>
       </div>
       <div className="flex-1 w-full">
@@ -67,7 +78,11 @@ export default function Home() {
                 return (
                   <span
                     data-distance={sentence.distance}
-                    style={{ color: `rgba(0,0,0,${opacity})` }}
+                    style={{
+                      color: `rgba(0,0,0,${opacity})`,
+                      borderLeft: "1px solid black",
+                      paddingLeft: "2px",
+                    }}
                     key={sIndex}
                   >
                     {sentence.sentence}{" "}
