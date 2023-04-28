@@ -23,20 +23,20 @@ export default function Home() {
     return r;
   });
 
-  const [min, max] = getDistanceRange(data?.response ?? []);
+  let min = 0;
+  let max = 0;
+  for (const paragraph of data?.response ?? []) {
+    const [pMin, pMax] = getDistanceRange(paragraph);
+    min = Math.min(min, pMin);
+    max = Math.max(max, pMax);
+    console.log("ranging from ", pMin, max);
+    console.log("data = ", data?.response);
+  }
   const opacityScale = scalePow()
-    .exponent(10)
-    .domain([min, max])
+    .exponent(50)
+    .domain([max, min])
     .range([0.1, 1])
     .clamp(true);
-  console.log("ranging from ", min, max);
-  console.log("data = ", data?.response);
-
-  // const paragraphs = data?.response.reduce((paragraphs, sentence) => {
-  //   if (sentence.sentence.)
-  //   return [];
-  // }, [])
-
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24 gap-4">
       <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
@@ -58,12 +58,23 @@ export default function Home() {
         </button>
       </div>
       <div className="flex-1 w-full">
-        {data?.response.map((sentence, index) => {
-          const opacity = index === 0 ? 1 : opacityScale(sentence.distance);
+        {data?.response.map((paragraph, index) => {
           return (
-            <span style={{ color: `rgba(0,0,0,${opacity})` }} key={index}>
-              {sentence.sentence}{" "}
-            </span>
+            <p key={index}>
+              {paragraph.map((sentence, sIndex) => {
+                const opacity =
+                  sIndex === 0 ? 1 : opacityScale(sentence.distance);
+                return (
+                  <span
+                    data-distance={sentence.distance}
+                    style={{ color: `rgba(0,0,0,${opacity})` }}
+                    key={sIndex}
+                  >
+                    {sentence.sentence}{" "}
+                  </span>
+                );
+              })}
+            </p>
           );
         })}
       </div>

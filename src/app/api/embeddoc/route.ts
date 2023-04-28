@@ -1,9 +1,9 @@
 import { createHash } from "crypto";
 import { Level } from "level";
 import { NextResponse } from "next/server";
+import nnsplit from "nnsplit";
 import { Configuration, OpenAIApi } from "openai";
 import path from "path";
-import sbd from "sbd";
 import { RichSentenceInfo, SentenceInfo } from "../../../types";
 const dataDir = path.join(__dirname, "../../../../..");
 
@@ -41,19 +41,36 @@ const openai = new OpenAIApi(
 );
 export async function POST(request: Request) {
   const body = await request.text();
-  const sentences = sbd.sentences(body, { newline_boundaries: true });
+  const nns = await nnsplit.NNSplit.new(path.join(dataDir, "model.onnx"), {});
+  const textParagraphs = body.split("\n").filter((p) => !!p);
+  const paragraphHunks = (await nns.split(textParagraphs)) as nnsplit.Split[];
+  const paragraphs = paragraphHunks.map(({ parts }) =>
+    parts.map(({ text }) => text as string)
+  );
+
+  // const sentences = sbd.sentences(body, { newline_boundaries: true });
   //   const sentences = split(body, {
   //     SeparatorParser: { separatorCharacters: [".", "!", "?", "\n"] },
   //   });
   console.log(
     "split into: ",
-    sentences
+    paragraphs
     // sentences.map(({ raw }) => raw)
   );
 
-  const response: SentenceInfo[] = [];
-  for await (const { distance, sentence } of getEmbeddings(sentences)) {
-    response.push({ distance, sentence });
+  const response: SentenceInfo[][] = [];
+  let previousEmbedding: number[] = [];
+  for (const paragraph of paragraphs) {
+    const si: SentenceInfo[] = [];
+    for await (const {
+      distance,
+      sentence,
+      embedding: newPreviousEmbedding,
+    } of getEmbeddings(paragraph, previousEmbedding)) {
+      previousEmbedding = newPreviousEmbedding;
+      si.push({ distance, sentence });
+    }
+    response.push(si);
   }
   const r = {
     response,
@@ -139,10 +156,9 @@ function sum(values: number[]) {
   return values.reduce((a, b) => a + b, 0);
 }
 async function* getEmbeddings(
-  sentences: string[]
-): AsyncGenerator<RichSentenceInfo> {
-  let previousEmbedding: number[] = [];
-
+  sentences: string[],
+  previousEmbedding: number[]
+) {
   for await (const { accumulated, sentence } of iterateCombos(sentences)) {
     // check cache first
     const result = await getFromDb(accumulated);
@@ -166,18 +182,20 @@ async function* getEmbeddings(
         "is",
         distance
       );
-      const info = {
+      const info: RichSentenceInfo = {
         sentence,
         distance,
         content: accumulated,
+        embedding,
       };
       await putIntoDb(accumulated, info);
       yield info;
     } else {
-      const info = {
+      const info: RichSentenceInfo = {
         sentence,
         distance: 0,
         content: accumulated,
+        embedding,
       };
       await putIntoDb(accumulated, info);
       yield info;
