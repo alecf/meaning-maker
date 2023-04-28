@@ -4,7 +4,7 @@ const nextConfig = {
     appDir: true,
   },
   webpack: (config) => {
-    config.externals = [...config.externals, "level"];
+    config.externals = [...config.externals, "level", "tractjs", "nnsplit"];
     return config;
   },
 };
