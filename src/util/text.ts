@@ -105,7 +105,7 @@ async function* iterateEmbeddings(
     });
     const embedding = embedResponse.data.data[0].embedding;
     const distance = previousEmbedding.length
-      ? cosine_similarity(embedding, previousEmbedding, 1000)
+      ? cosine_similarity(embedding, previousEmbedding)
       : 0;
     const info: RichSentenceInfo = {
       sentence,

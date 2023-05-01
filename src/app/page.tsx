@@ -102,9 +102,9 @@ export default function Home() {
                   return (
                     <Tooltip
                       key={sIndex}
-                      label={`[${index}:${sIndex}] distance: ${
-                        sentence.distance
-                      } (${formatDiff(diff)})`}
+                      label={`distance: ${sentence.distance} (${formatDiff(
+                        diff
+                      )})`}
                       hasArrow
                       placement="left-start"
                     >
