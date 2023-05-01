@@ -1,5 +1,18 @@
 "use client";
 import { EmbedResponse, SentenceInfo } from "@/types";
+import {
+  Button,
+  Container,
+  Flex,
+  NumberDecrementStepper,
+  NumberIncrementStepper,
+  NumberInput,
+  NumberInputField,
+  NumberInputStepper,
+  Text,
+  Textarea,
+  Tooltip,
+} from "@chakra-ui/react";
 import { scalePow } from "d3-scale";
 import { Inter } from "next/font/google";
 import { useState } from "react";
@@ -39,62 +52,84 @@ export default function Home() {
     .range([0.1, 1])
     .clamp(true);
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24 gap-4">
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Enter text for interpreting
-        </p>
-      </div>
+    <main>
+      <Container centerContent width="2xl">
+        <Text as="h1">Enter text</Text>
 
-      <div className="flex w-full h-28 sticky top-0">
-        <textarea
-          className="flex-1"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-        ></textarea>
-      </div>
-      <div className="flex gap-2">
-        <label>
-          Window size:{" "}
-          <input
-            type="number"
-            value={windowSize}
-            onChange={(e) => setWindowSize(e.target.value)}
-          />
-        </label>
-        <button type="button" onClick={() => trigger()} disabled={isMutating}>
-          <span className="whitespace-nowrap">
-            submit {isMutating && <Spinner />}
-          </span>
-        </button>
-      </div>
-      <div className="flex-1 w-full">
-        {data?.response.map((paragraph, index) => {
-          return (
-            <p key={index}>
-              {paragraph.map((sentence, sIndex) => {
-                const opacity =
-                  sIndex === 0 ? 1 : opacityScale(sentence.distance);
-                return (
-                  <span
-                    data-distance={sentence.distance}
-                    style={{
-                      color: `rgba(0,0,0,${opacity})`,
-                      borderLeft: "1px solid black",
-                      paddingLeft: "2px",
-                    }}
-                    key={sIndex}
-                  >
-                    {sentence.sentence}{" "}
-                  </span>
-                );
-              })}
-            </p>
-          );
-        })}
-      </div>
+        <Textarea value={input} onChange={(e) => setInput(e.target.value)} />
+        <Flex gap={1}>
+          <label>
+            <Flex gap={1} alignItems="center">
+              <Text>Window size:</Text>
+              <NumberInput
+                value={windowSize}
+                onChange={(valueStr) => setWindowSize(valueStr)}
+                max={10}
+              >
+                <NumberInputField />
+                <NumberInputStepper>
+                  <NumberIncrementStepper />
+                  <NumberDecrementStepper />
+                </NumberInputStepper>
+              </NumberInput>
+            </Flex>
+          </label>
+          <Button
+            onClick={() => trigger()}
+            isDisabled={isMutating}
+            rightIcon={isMutating ? <Spinner /> : undefined}
+          >
+            submit
+          </Button>
+        </Flex>
+        <div className="flex-1 w-full">
+          {data?.response.map((paragraph, index) => {
+            const prevParagraph: SentenceInfo[] =
+              index === 0 ? [] : data?.response[index - 1];
+            return (
+              <Text paddingTop={2} key={index}>
+                {paragraph.map((sentence, sIndex) => {
+                  const prevSentence =
+                    sIndex === 0
+                      ? prevParagraph[prevParagraph.length - 1]
+                      : paragraph[sIndex - 1];
+                  const diff = prevSentence
+                    ? sentence.distance - prevSentence.distance
+                    : 0;
+                  const opacity =
+                    sIndex === 0 ? 1 : opacityScale(sentence.distance);
+                  return (
+                    <Tooltip
+                      key={sIndex}
+                      label={`[${index}:${sIndex}] distance: ${
+                        sentence.distance
+                      } (${formatDiff(diff)})`}
+                      hasArrow
+                      placement="left-start"
+                    >
+                      <Text
+                        as="span"
+                        data-distance={sentence.distance}
+                        _hover={{
+                          textShadow: `0px 0px 1px rgba(0,0,0,${opacity})`,
+                        }}
+                        sx={{
+                          color: `rgba(0,0,0,${opacity})`,
+                          paddingLeft: "2px",
+                        }}
+                      >
+                        {sentence.sentence}{" "}
+                      </Text>
+                    </Tooltip>
+                  );
+                })}
+              </Text>
+            );
+          })}
+        </div>
 
-      <div className="mb-32 grid text-center lg:mb-0 lg:grid-cols-4 lg:text-left"></div>
+        <div className="mb-32 grid text-center lg:mb-0 lg:grid-cols-4 lg:text-left"></div>
+      </Container>
     </main>
   );
 }
@@ -121,6 +156,10 @@ const Spinner = () => (
     ></path>
   </svg>
 );
+
+function formatDiff(diff: number) {
+  return diff > 0 ? `+${diff.toFixed(2)}` : `${diff.toFixed(2)}`;
+}
 
 function getDistanceRange(sentences: SentenceInfo[]) {
   const distances = sentences
