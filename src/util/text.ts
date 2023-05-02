@@ -1,9 +1,9 @@
 import { RichSentenceInfo, SentenceInfo } from "@/types";
+import { getFromDb, putIntoDb } from "@/util/db";
+import { encode } from "gpt-3-encoder";
 import { NNSplit, Split } from "nnsplit";
 import { Configuration, OpenAIApi } from "openai";
-import { getFromDb, putIntoDb } from "./db";
 import { cosine_similarity, trimToFitWindow } from "./util";
-
 export const openai = new OpenAIApi(
   new Configuration({ apiKey: process.env.OPENAI_API_KEY })
 );
@@ -27,22 +27,40 @@ interface SentenceWithAccumulation {
  */
 export async function* iterateTextWindows(
   sentences: string[],
-  maxWindowSize: number
+  maxWindowSize: number,
+  minTokenLength: number
 ): AsyncGenerator<SentenceWithAccumulation> {
+  console.log("iterateTextWindows", sentences.length, "sentences");
   // The current window of content
   const contentWindow: string[] = [];
+
   // Accumulated for this particular sentence - includes all whitespace preceding a sentence
   const localAccumulated: string[] = [];
-  for (const sentence of sentences) {
-    contentWindow.push(sentence);
 
+  for (const sentence of sentences) {
+    // Ignore totally blank space
+    if (!sentence.trim()) {
+      console.log("skipping ", [sentence]);
+      continue;
+    }
     localAccumulated.push(sentence);
-    if (sentence.trim() === "") {
+    const sentenceTokens = encode(localAccumulated.join(" "));
+
+    if (sentenceTokens.length <= minTokenLength) {
+      console.log(
+        "wasnt enough: ",
+        sentence,
+        ", ",
+        sentenceTokens.length,
+        localAccumulated
+      );
       continue;
     }
 
+    // if we got this far, we have a big enough sentence to
     const currentSentence = localAccumulated.join(" ");
     localAccumulated.splice(0);
+    contentWindow.push(currentSentence);
 
     trimToFitWindow(contentWindow, maxWindowSize);
     yield {
@@ -63,7 +81,8 @@ export async function extractParagraphs(body: string, nns: NNSplit) {
 
 export async function getAllSentences(
   paragraphs: string[][],
-  maxWindowSize: number
+  maxWindowSize: number,
+  minTokenLength: number
 ) {
   const response: SentenceInfo[][] = [];
   let previousEmbedding: number[] = [];
@@ -73,7 +92,12 @@ export async function getAllSentences(
       distance,
       sentence,
       embedding: newPreviousEmbedding,
-    } of iterateEmbeddings(paragraph, previousEmbedding, maxWindowSize)) {
+    } of iterateEmbeddings(
+      paragraph,
+      previousEmbedding,
+      maxWindowSize,
+      minTokenLength
+    )) {
       previousEmbedding = newPreviousEmbedding;
       si.push({ distance, sentence });
     }
@@ -85,11 +109,13 @@ export async function getAllSentences(
 async function* iterateEmbeddings(
   sentences: string[],
   previousEmbedding: number[],
-  maxWindowSize: number
+  maxWindowSize: number,
+  minTokenLength: number
 ) {
   for await (const { accumulated, sentence } of iterateTextWindows(
     sentences,
-    maxWindowSize
+    maxWindowSize,
+    minTokenLength
   )) {
     console.log("sentence: ", sentence);
     // check cache first

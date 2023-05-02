@@ -1,7 +1,7 @@
+import { RichSentenceInfo } from "@/types";
 import { createHash } from "crypto";
 import { Level } from "level";
 import path from "path";
-import { RichSentenceInfo } from "../types";
 
 export const dataDir = path.join(__dirname, "../../../../..");
 let db: Level<string, RichSentenceInfo>;
@@ -14,7 +14,6 @@ declare namespace globalThis {
 if (process.env.NODE_ENV === "production") {
   db = openDb();
 } else {
-  console.log("opening db...");
   if (!globalThis.__db) {
     globalThis.__db = openDb();
   }
