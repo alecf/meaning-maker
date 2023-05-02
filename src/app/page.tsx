@@ -1,9 +1,11 @@
 "use client";
 import { EmbedResponse, SentenceInfo } from "@/types";
 import {
+  Box,
   Button,
   Container,
   Flex,
+  Heading,
   NumberDecrementStepper,
   NumberIncrementStepper,
   NumberInput,
@@ -31,21 +33,19 @@ export default function Home() {
       ". $1"
     );
     const response = await fetch(`/api/embeddoc?window_size=${windowSize}`, {
-      body: inputWithWikiReferencesFixed,
+      body: encodeURIComponent(inputWithWikiReferencesFixed),
       method: "POST",
     });
     const r: EmbedResponse = await response.json();
     return r;
   });
 
-  let min = 0;
+  let min = 1;
   let max = 0;
   for (const paragraph of data?.response ?? []) {
     const [pMin, pMax] = getDistanceRange(paragraph);
     min = Math.min(min, pMin);
     max = Math.max(max, pMax);
-    console.log("ranging from ", pMin, max);
-    console.log("data = ", data?.response);
   }
   const opacityScale = scalePow()
     .exponent(50)
@@ -53,16 +53,25 @@ export default function Home() {
     .range([0.1, 1])
     .clamp(true);
   return (
-    <main>
-      <Container centerContent width="2xl">
-        <Text as="h1">Enter text</Text>
+    <Box as="main">
+      <Container centerContent width={{ base: "md", md: "2xl" }} p={4}>
+        <Heading>Meaning Maker</Heading>
+        <Text paddingY={2}>
+          Enter text to try to gauge how much new information there is in each
+          sentence.
+        </Text>
 
-        <Textarea value={input} onChange={(e) => setInput(e.target.value)} />
+        <Textarea
+          bgColor="whiteAlpha.500"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+        />
         <Flex gap={1}>
           <label>
             <Flex gap={1} alignItems="center">
               <Text>Window size:</Text>
               <NumberInput
+                bgColor="whiteAlpha.500"
                 value={windowSize}
                 onChange={(valueStr) => setWindowSize(valueStr)}
                 max={10}
@@ -77,13 +86,13 @@ export default function Home() {
           </label>
           <Button
             onClick={() => trigger()}
-            isDisabled={isMutating}
+            isDisabled={isMutating || !input.trim()}
             rightIcon={isMutating ? <Spinner /> : undefined}
           >
-            submit
+            Submit
           </Button>
         </Flex>
-        <div className="flex-1 w-full">
+        <div>
           {data?.response.map((paragraph, index) => {
             const prevParagraph: SentenceInfo[] =
               index === 0 ? [] : data?.response[index - 1];
@@ -97,14 +106,14 @@ export default function Home() {
                   const diff = prevSentence
                     ? sentence.distance - prevSentence.distance
                     : 0;
-                  const opacity =
-                    sIndex === 0 ? 1 : opacityScale(sentence.distance);
+                  const isFirst = index === 0 && sIndex === 0;
+                  const opacity = isFirst ? 1 : opacityScale(sentence.distance);
                   return (
                     <Tooltip
                       key={sIndex}
-                      label={`distance: ${sentence.distance} (${formatDiff(
-                        diff
-                      )})`}
+                      label={`distance: ${sentence.distance.toFixed(
+                        3
+                      )} (${formatDiff(diff)})`}
                       hasArrow
                       placement="left-start"
                     >
@@ -129,12 +138,12 @@ export default function Home() {
           })}
         </div>
       </Container>
-    </main>
+    </Box>
   );
 }
 
 function formatDiff(diff: number) {
-  return diff > 0 ? `+${diff.toFixed(2)}` : `${diff.toFixed(2)}`;
+  return diff > 0 ? `+${diff.toFixed(3)}` : `${diff.toFixed(3)}`;
 }
 
 function getDistanceRange(sentences: SentenceInfo[]) {
