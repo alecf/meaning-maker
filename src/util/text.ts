@@ -124,7 +124,7 @@ async function* iterateEmbeddings(
     }
 
     const embedResponse = await openai.embeddings.create({
-      model: "text-embedding-ada-002",
+      model: "text-embedding-3-small",
       input: accumulated,
     });
     const embedding = embedResponse.data[0].embedding;
