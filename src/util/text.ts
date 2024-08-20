@@ -2,11 +2,9 @@ import { RichSentenceInfo, SentenceInfo } from "@/types";
 import { getFromDb, putIntoDb } from "@/util/db";
 import { encode } from "gpt-3-encoder";
 import { NNSplit, Split } from "nnsplit";
-import { Configuration, OpenAIApi } from "openai";
+import OpenAI from "openai";
 import { cosine_similarity, trimToFitWindow } from "./util";
-export const openai = new OpenAIApi(
-  new Configuration({ apiKey: process.env.OPENAI_API_KEY })
-);
+export const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 interface SentenceWithAccumulation {
   sentence: string;
@@ -28,7 +26,7 @@ interface SentenceWithAccumulation {
 export async function* iterateTextWindows(
   sentences: string[],
   maxWindowSize: number,
-  minTokenLength: number
+  minTokenLength: number,
 ): AsyncGenerator<SentenceWithAccumulation> {
   console.log("iterateTextWindows", sentences.length, "sentences");
   // The current window of content
@@ -52,7 +50,7 @@ export async function* iterateTextWindows(
         sentence,
         ", ",
         sentenceTokens.length,
-        localAccumulated
+        localAccumulated,
       );
       continue;
     }
@@ -74,7 +72,7 @@ export async function extractParagraphs(body: string, nns: NNSplit) {
   const textParagraphs = body.split("\n").filter((p) => !!p);
   const paragraphHunks: Split[] = await nns.split(textParagraphs);
   const paragraphs = paragraphHunks.map(({ parts }) =>
-    parts.map(({ text }) => text as string)
+    parts.map(({ text }) => text as string),
   );
   return paragraphs;
 }
@@ -82,7 +80,7 @@ export async function extractParagraphs(body: string, nns: NNSplit) {
 export async function getAllSentences(
   paragraphs: string[][],
   maxWindowSize: number,
-  minTokenLength: number
+  minTokenLength: number,
 ) {
   const response: SentenceInfo[][] = [];
   let previousEmbedding: number[] = [];
@@ -96,7 +94,7 @@ export async function getAllSentences(
       paragraph,
       previousEmbedding,
       maxWindowSize,
-      minTokenLength
+      minTokenLength,
     )) {
       previousEmbedding = newPreviousEmbedding;
       si.push({ distance, sentence });
@@ -110,12 +108,12 @@ async function* iterateEmbeddings(
   sentences: string[],
   previousEmbedding: number[],
   maxWindowSize: number,
-  minTokenLength: number
+  minTokenLength: number,
 ) {
   for await (const { accumulated, sentence } of iterateTextWindows(
     sentences,
     maxWindowSize,
-    minTokenLength
+    minTokenLength,
   )) {
     console.log("sentence: ", sentence);
     // check cache first
@@ -125,11 +123,11 @@ async function* iterateEmbeddings(
       continue;
     }
 
-    const embedResponse = await openai.createEmbedding({
+    const embedResponse = await openai.embeddings.create({
       model: "text-embedding-ada-002",
       input: accumulated,
     });
-    const embedding = embedResponse.data.data[0].embedding;
+    const embedding = embedResponse.data[0].embedding;
     const distance = previousEmbedding.length
       ? cosine_similarity(embedding, previousEmbedding)
       : 0;
