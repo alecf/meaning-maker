@@ -35,7 +35,7 @@
     "typescript": "5.0.4"
   },
   "devDependencies": {
-    "@types/d3-scale": "^4.0.3",
-    "@types/sbd": "^1.0.3"
+    "@types/d3-scale": "^4.0.8",
+    "@types/sbd": "^1.0.5"
   }
 }
