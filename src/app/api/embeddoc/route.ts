@@ -9,12 +9,6 @@ export async function POST(request: Request) {
   const minTokenLength = parseInt(searchParams.get("min_token_length") ?? "3");
   const paragraphs = await extractParagraphs(body);
 
-  console.log(
-    "split into: ",
-    paragraphs,
-    // sentences.map(({ raw }) => raw)
-  );
-
   const response: SentenceInfo[][] = await getAllSentences(
     paragraphs,
     maxWindowSize,
