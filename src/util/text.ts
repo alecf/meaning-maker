@@ -129,7 +129,6 @@ async function* iterateEmbeddings(
     maxWindowSize,
     minTokenLength,
   )) {
-    console.log("sentence: ", sentence);
     // check cache first
     const result = await getFromDb(accumulated);
     if (result) {
