@@ -1,5 +1,6 @@
 "use client";
 import { EmbedResponse, SentenceInfo } from "@/types";
+import { Link } from "@chakra-ui/next-js";
 import {
   Box,
   Button,
@@ -26,19 +27,22 @@ const inter = Inter({ subsets: ["latin"] });
 export default function Home() {
   const [input, setInput] = useState("");
   const [windowSize, setWindowSize] = useState("8");
-  const { trigger, data, isMutating } = useSWRMutation("embedded", async () => {
-    // Wikipedia references confuse the splitter
-    const inputWithWikiReferencesFixed = input.replace(
-      /\.(\[[0-9]+\])/g,
-      ". $1",
-    );
-    const response = await fetch(`/api/embeddoc?window_size=${windowSize}`, {
-      body: encodeURIComponent(inputWithWikiReferencesFixed),
-      method: "POST",
-    });
-    const r: EmbedResponse = await response.json();
-    return r;
-  });
+  const { trigger, data, isMutating, error } = useSWRMutation(
+    "embedded",
+    async () => {
+      // Wikipedia references confuse the splitter
+      const inputWithWikiReferencesFixed = input.replace(
+        /\.(\[[0-9]+\])/g,
+        ". $1",
+      );
+      const response = await fetch(`/api/embeddoc?window_size=${windowSize}`, {
+        body: encodeURIComponent(inputWithWikiReferencesFixed),
+        method: "POST",
+      });
+      const r: EmbedResponse = await response.json();
+      return r;
+    },
+  );
 
   let min = 1;
   let max = 0;
@@ -54,23 +58,37 @@ export default function Home() {
     .clamp(true);
   return (
     <Box as="main">
-      <Container centerContent width={{ base: "md", md: "2xl" }} p={4}>
+      <Container centerContent width={{ base: "md", md: "2xl" }} p={4} gap={2}>
         <Heading>Meaning Maker</Heading>
-        <Text paddingY={2}>
+        <Text paddingY={2} textAlign="center" sx={{ textWrap: "balance" }}>
           Enter text to try to gauge how much new information there is in each
-          sentence.
+          sentence. (max 3000 characters)
         </Text>
 
         <Textarea
           bgColor="whiteAlpha.500"
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          maxLength={3000}
         />
+        <Text sx={{ textWrap: "balance" }} fontSize="sm">
+          Need inspiration? Try part of a{" "}
+          <Link
+            href="https://en.wikipedia.org/wiki/Special:Random"
+            target="_blank"
+            textDecoration="underline"
+          >
+            random Wikipedia page
+          </Link>{" "}
+          or enter your own text.
+        </Text>
+
         <Flex gap={1}>
           <label>
             <Flex gap={1} alignItems="center">
               <Text>Window size:</Text>
               <NumberInput
+                size="sm"
                 bgColor="whiteAlpha.500"
                 value={windowSize}
                 onChange={(valueStr) => setWindowSize(valueStr)}
@@ -86,12 +104,14 @@ export default function Home() {
           </label>
           <Button
             onClick={() => trigger()}
+            isLoading={isMutating}
             isDisabled={isMutating || !input.trim()}
             rightIcon={isMutating ? <Spinner /> : undefined}
           >
             Submit
           </Button>
         </Flex>
+        {error && <Text color="red.500">{error.message}</Text>}
         <div>
           {data?.response.map((paragraph, index) => {
             const prevParagraph: SentenceInfo[] =
