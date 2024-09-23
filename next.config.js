@@ -1,13 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   webpack: (config) => {
-    config.externals = [
-      ...config.externals,
-      "level",
-      "tractjs",
-      "nnsplit",
-      "gpt-3-encoder",
-    ];
+    config.externals = [...config.externals, "gpt-3-encoder"];
     return config;
   },
 };
