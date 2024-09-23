@@ -1,6 +1,6 @@
 "use client";
 import { ChakraBaseProvider, extendBaseTheme } from "@chakra-ui/react";
-import chakraTheme from "@chakra-ui/theme";
+import { theme as baseTheme } from "@chakra-ui/theme";
 import { StyleFunctionProps, mode } from "@chakra-ui/theme-tools";
 import { FC, PropsWithChildren } from "react";
 
@@ -20,7 +20,7 @@ const {
   Textarea,
   Tooltip,
   Stepper,
-} = chakraTheme.components;
+} = baseTheme.components;
 
 const theme = extendBaseTheme({
   config: {
