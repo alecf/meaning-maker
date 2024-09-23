@@ -30,7 +30,7 @@ export default function Home() {
     // Wikipedia references confuse the splitter
     const inputWithWikiReferencesFixed = input.replace(
       /\.(\[[0-9]+\])/g,
-      ". $1"
+      ". $1",
     );
     const response = await fetch(`/api/embeddoc?window_size=${windowSize}`, {
       body: encodeURIComponent(inputWithWikiReferencesFixed),
@@ -108,11 +108,12 @@ export default function Home() {
                     : 0;
                   const isFirst = index === 0 && sIndex === 0;
                   const opacity = isFirst ? 1 : opacityScale(sentence.distance);
+
                   return (
                     <Tooltip
                       key={sIndex}
                       label={`distance: ${sentence.distance.toFixed(
-                        3
+                        3,
                       )} (${formatDiff(diff)})`}
                       hasArrow
                       placement="left-start"
@@ -121,10 +122,10 @@ export default function Home() {
                         as="span"
                         data-distance={sentence.distance}
                         _hover={{
-                          textShadow: `0px 0px 1px rgba(0,0,0,${opacity})`,
+                          textShadow: `0px 0px 1px hsla(from var(--chakra-colors-chakra-body-text) h s l / 1)`,
                         }}
                         sx={{
-                          color: `rgba(0,0,0,${opacity})`,
+                          opacity: `${opacity}`,
                           paddingLeft: "2px",
                         }}
                       >
