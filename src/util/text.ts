@@ -1,8 +1,8 @@
 import { RichSentenceInfo, SentenceInfo } from "@/types";
 import { getFromDb, putIntoDb } from "@/util/db";
 import { encode } from "gpt-3-encoder";
-import { NNSplit, Split } from "nnsplit";
 import OpenAI from "openai";
+import { split } from "sentence-splitter";
 import { cosine_similarity, trimToFitWindow } from "./util";
 export const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -68,12 +68,26 @@ export async function* iterateTextWindows(
   }
 }
 
-export async function extractParagraphs(body: string, nns: NNSplit) {
-  const textParagraphs = body.split("\n").filter((p) => !!p);
-  const paragraphHunks: Split[] = await nns.split(textParagraphs);
-  const paragraphs = paragraphHunks.map(({ parts }) =>
-    parts.map(({ text }) => text as string),
+export async function extractParagraphs(body: string) {
+  const paragraphHunks = split(body);
+  const paragraphs = paragraphHunks.reduce<string[][]>(
+    (acc, hunk) => {
+      if (hunk.type === "Sentence") {
+        acc[acc.length - 1].push(hunk.raw);
+        return acc;
+      }
+      if (hunk.type === "WhiteSpace") {
+        if (hunk.raw.replace(/ +?/g, "")) {
+          acc.push([]);
+        }
+        return acc;
+      }
+      console.log("unkonwn node type: ", hunk.type);
+      return acc;
+    },
+    [[]] as string[][],
   );
+
   return paragraphs;
 }
 
