@@ -13,7 +13,7 @@
     "@chakra-ui/react": "^2.10.1",
     "@emotion/react": "^11.13.3",
     "@emotion/styled": "^11.13.0",
-    "@types/node": "20.16.11",
+    "@types/node": "20.16.13",
     "@types/react": "18.3.11",
     "@types/react-dom": "18.3.0",
     "@vercel/kv": "^3.0.0",
