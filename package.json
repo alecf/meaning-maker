@@ -32,7 +32,7 @@
     "sbd": "^1.0.19",
     "sentence-splitter": "^5.0.0",
     "swr": "^2.2.5",
-    "typescript": "5.6.3"
+    "typescript": "5.7.2"
   },
   "devDependencies": {
     "@types/d3-scale": "^4.0.8",
