@@ -32,7 +32,8 @@
     "sbd": "^1.0.19",
     "sentence-splitter": "^5.0.0",
     "swr": "^2.2.5",
-    "typescript": "5.7.2"
+    "typescript": "5.7.2",
+    "vercel": "^39.2.0"
   },
   "devDependencies": {
     "@types/d3-scale": "^4.0.8",
