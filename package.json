@@ -36,7 +36,7 @@
     "vercel": "^40.1.0"
   },
   "devDependencies": {
-    "@types/d3-scale": "^4.0.8",
+    "@types/d3-scale": "^4.0.9",
     "@types/sbd": "^1.0.5"
   }
 }
