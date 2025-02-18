@@ -20,7 +20,7 @@
     "autoprefixer": "10.4.20",
     "d3-scale": "^4.0.2",
     "eslint": "8.57.1",
-    "eslint-config-next": "15.1.6",
+    "eslint-config-next": "15.1.7",
     "framer-motion": "^12.4.2",
     "gpt-3-encoder": "^1.1.4",
     "i": "^0.3.7",
