@@ -32,7 +32,7 @@
     "sbd": "^1.0.19",
     "sentence-splitter": "^5.0.0",
     "swr": "^2.3.2",
-    "typescript": "5.7.3",
+    "typescript": "5.8.2",
     "vercel": "^41.3.0"
   },
   "devDependencies": {
