@@ -21,7 +21,7 @@
     "d3-scale": "^4.0.2",
     "eslint": "8.57.1",
     "eslint-config-next": "15.2.3",
-    "framer-motion": "^12.5.0",
+    "framer-motion": "^12.6.2",
     "gpt-3-encoder": "^1.1.4",
     "i": "^0.3.7",
     "next": "15.2.3",
