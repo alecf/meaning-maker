@@ -23,7 +23,6 @@
     "eslint-config-next": "15.3.3",
     "framer-motion": "^12.17.0",
     "gpt-3-encoder": "^1.1.4",
-    "i": "^0.3.7",
     "next": "15.3.3",
     "npm": "^11.4.1",
     "openai": "^4.100.0",
