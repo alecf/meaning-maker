@@ -1,9 +1,11 @@
 import { RichSentenceInfo, SentenceInfo } from "@/types";
 import { getFromDb, putIntoDb } from "@/util/db";
+import DataLoader from "dataloader";
 import { encode } from "gpt-3-encoder";
 import OpenAI from "openai";
 import { split } from "sentence-splitter";
 import { cosine_similarity, trimToFitWindow } from "./util";
+
 export const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 interface SentenceWithAccumulation {
@@ -28,7 +30,6 @@ export async function* iterateTextWindows(
   maxWindowSize: number,
   minTokenLength: number,
 ): AsyncGenerator<SentenceWithAccumulation> {
-  console.log("iterateTextWindows", sentences.length, "sentences");
   // The current window of content
   const contentWindow: string[] = [];
 
@@ -124,23 +125,47 @@ async function* iterateEmbeddings(
   maxWindowSize: number,
   minTokenLength: number,
 ) {
+  const embeddingsLoader = new DataLoader<string, number[]>(
+    async (keys: readonly string[]) => {
+      const key = keys[0];
+      const result = await getFromDb(key);
+      if (result) {
+        return [result.embedding];
+      }
+
+      const embedResponse = await openai.embeddings.create({
+        model: "text-embedding-3-small",
+        input: keys[0],
+      });
+      return [embedResponse.data[0].embedding];
+    },
+    { batch: false, cache: true },
+  );
+
+  const embeddingsPromises: {
+    accumulated: string;
+    sentence: string;
+    embeddingPromise: Promise<number[]>;
+  }[] = [];
+
   for await (const { accumulated, sentence } of iterateTextWindows(
     sentences,
     maxWindowSize,
     minTokenLength,
   )) {
-    // check cache first
-    const result = await getFromDb(accumulated);
-    if (result) {
-      yield result;
-      continue;
-    }
-
-    const embedResponse = await openai.embeddings.create({
-      model: "text-embedding-3-small",
-      input: accumulated,
+    embeddingsPromises.push({
+      accumulated,
+      sentence,
+      embeddingPromise: embeddingsLoader.load(accumulated),
     });
-    const embedding = embedResponse.data[0].embedding;
+  }
+
+  for (const {
+    accumulated,
+    sentence,
+    embeddingPromise,
+  } of embeddingsPromises) {
+    const embedding = await embeddingPromise;
     const distance = previousEmbedding.length
       ? cosine_similarity(embedding, previousEmbedding)
       : 0;
