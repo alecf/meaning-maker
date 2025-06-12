@@ -2,11 +2,11 @@ import { RichSentenceInfo } from "@/types";
 import { Redis } from "@upstash/redis";
 import { createHash } from "crypto";
 
-console.log(process.env.KV2_KV_REST_API_URL, process.env.KV2_KV_REST_API_TOKEN);
+console.log(process.env.KV_REST_API_URL, process.env.KV_REST_API_TOKEN);
 // Initialize Redis
 const redis = new Redis({
-  url: process.env.KV2_KV_REST_API_URL,
-  token: process.env.KV2_KV_REST_API_TOKEN,
+  url: process.env.KV_REST_API_URL,
+  token: process.env.KV_REST_API_TOKEN,
 });
 
 export async function getFromDb(s: string): Promise<RichSentenceInfo | null> {
