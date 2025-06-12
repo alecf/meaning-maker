@@ -46,7 +46,7 @@ export async function* iterateTextWindows(
     const sentenceTokens = encode(localAccumulated.join(" "));
 
     if (sentenceTokens.length <= minTokenLength) {
-      console.log(
+      console.warn(
         "wasnt enough: ",
         sentence,
         ", ",
