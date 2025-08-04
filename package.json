@@ -22,7 +22,7 @@
     "dataloader": "^2.2.3",
     "eslint": "8.57.1",
     "eslint-config-next": "15.4.4",
-    "framer-motion": "^12.23.11",
+    "framer-motion": "^12.23.12",
     "gpt-3-encoder": "^1.1.4",
     "next": "15.4.5",
     "npm": "^11.5.1",
