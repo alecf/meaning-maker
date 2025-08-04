@@ -33,7 +33,7 @@
     "sentence-splitter": "^5.0.0",
     "swr": "^2.3.4",
     "typescript": "5.8.3",
-    "vercel": "^44.6.4"
+    "vercel": "^44.7.0"
   },
   "devDependencies": {
     "@types/d3-scale": "^4.0.9",
