@@ -2,18 +2,22 @@ import { RichSentenceInfo } from "@/types";
 import { Redis } from "@upstash/redis";
 import { createHash } from "crypto";
 
-console.log(process.env.KV_REST_API_URL, process.env.KV_REST_API_TOKEN);
-// Initialize Redis
-const redis = new Redis({
-  url: process.env.KV_REST_API_URL,
-  token: process.env.KV_REST_API_TOKEN,
-});
+let _redis: Redis | null = null;
+function getRedis() {
+  if (!_redis) {
+    _redis = new Redis({
+      url: process.env.KV_REST_API_URL!,
+      token: process.env.KV_REST_API_TOKEN!,
+    });
+  }
+  return _redis;
+}
 
 export async function getFromDb(s: string): Promise<RichSentenceInfo | null> {
   const hash = createHash("sha256").update(s).digest("hex");
-  return await redis.get<RichSentenceInfo>(hash);
+  return await getRedis().get<RichSentenceInfo>(hash);
 }
 export async function putIntoDb(s: string, value: RichSentenceInfo) {
   const hash = createHash("sha256").update(s).digest("hex");
-  await redis.set(hash, value);
+  await getRedis().set(hash, value);
 }

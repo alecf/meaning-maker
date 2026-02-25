@@ -18,11 +18,8 @@ import {
   Tooltip,
 } from "@chakra-ui/react";
 import { scalePow } from "d3-scale";
-import { Inter } from "next/font/google";
 import { useState } from "react";
 import useSWRMutation from "swr/mutation";
-
-const inter = Inter({ subsets: ["latin"] });
 
 export default function Home() {
   const [input, setInput] = useState("");
