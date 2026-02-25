@@ -6,7 +6,13 @@ import OpenAI from "openai";
 import { split } from "sentence-splitter";
 import { cosine_similarity, trimToFitWindow } from "./util";
 
-export const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+let _openai: OpenAI | null = null;
+function getOpenAI() {
+  if (!_openai) {
+    _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return _openai;
+}
 
 interface SentenceWithAccumulation {
   sentence: string;
@@ -133,7 +139,7 @@ async function* iterateEmbeddings(
         return [result.embedding];
       }
 
-      const embedResponse = await openai.embeddings.create({
+      const embedResponse = await getOpenAI().embeddings.create({
         model: "text-embedding-3-small",
         input: keys[0],
       });
