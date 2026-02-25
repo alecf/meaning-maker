@@ -13,3 +13,31 @@ updates:
     groups:
       development-dependencies:
         dependency-type: "development"
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+      nextjs:
+        patterns:
+          - "next"
+          - "eslint-config-next"
+          - "@vercel/*"
+          - "vercel"
+      chakra-and-styling:
+        patterns:
+          - "@chakra-ui/*"
+          - "@emotion/*"
+          - "framer-motion"
+      typescript-and-linting:
+        patterns:
+          - "typescript"
+          - "eslint"
+          - "@types/node"
+      nlp-and-ai:
+        patterns:
+          - "openai"
+          - "gpt-3-encoder"
+          - "sbd"
+          - "sentence-splitter"
