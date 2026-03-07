@@ -23,7 +23,7 @@
     "autoprefixer": "10.4.24",
     "d3-scale": "^4.0.2",
     "dataloader": "^2.2.3",
-    "eslint": "10.0.2",
+    "eslint": "8.57.1",
     "eslint-config-next": "15.5.4",
     "framer-motion": "^12.34.3",
     "gpt-3-encoder": "^1.1.4",
