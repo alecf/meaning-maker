@@ -20,7 +20,7 @@
     "@types/react-dom": "18.3.1",
     "@upstash/redis": "^1.36.4",
     "@vercel/kv": "^3.0.0",
-    "autoprefixer": "10.4.24",
+    "autoprefixer": "10.4.27",
     "d3-scale": "^4.0.2",
     "dataloader": "^2.2.3",
     "eslint": "10.1.0",
