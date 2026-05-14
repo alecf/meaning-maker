@@ -18,7 +18,7 @@
     "@types/node": "25.5.0",
     "@types/react": "18.3.12",
     "@types/react-dom": "18.3.1",
-    "@upstash/redis": "^1.36.2",
+    "@upstash/redis": "^1.36.4",
     "@vercel/kv": "^3.0.0",
     "autoprefixer": "10.4.24",
     "d3-scale": "^4.0.2",
