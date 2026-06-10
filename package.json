@@ -23,7 +23,7 @@
     "autoprefixer": "10.4.27",
     "d3-scale": "^4.0.2",
     "dataloader": "^2.2.3",
-    "eslint": "10.1.0",
+    "eslint": "8.57.1",
     "eslint-config-next": "15.5.4",
     "framer-motion": "^12.35.0",
     "gpt-3-encoder": "^1.1.4",
@@ -35,7 +35,7 @@
     "sbd": "^1.0.19",
     "sentence-splitter": "^5.0.1",
     "swr": "^2.4.1",
-    "typescript": "6.0.2",
+    "typescript": "5.9.3",
     "vercel": "^50.5.1"
   },
   "devDependencies": {
