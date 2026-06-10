@@ -35,7 +35,7 @@
     "sbd": "^1.0.19",
     "sentence-splitter": "^5.0.1",
     "swr": "^2.4.1",
-    "typescript": "5.9.3",
+    "typescript": "6.0.2",
     "vercel": "^50.5.1"
   },
   "devDependencies": {
