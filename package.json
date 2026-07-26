@@ -41,6 +41,7 @@
   "devDependencies": {
     "@types/d3-scale": "^4.0.9",
     "@types/sbd": "^1.0.5",
-    "vitest": "^4.0.18"
+    "vitest": "^4.0.18",
+    "yaml": "^2.9.0"
   }
 }
