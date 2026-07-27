@@ -62,7 +62,8 @@ Hover over any sentence to see the raw similarity distance and the delta from th
 ```bash
 npm run dev       # Start dev server
 npm run build     # Production build
-npm run lint      # Run ESLint
+npm run lint      # Run Biome linter
+npm run lint:fix  # Run Biome linter and apply safe fixes
 npm run typecheck # Check TypeScript types
 npm test          # Run Vitest tests
 ```

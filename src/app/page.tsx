@@ -1,5 +1,5 @@
 "use client";
-import { EmbedResponse, SentenceInfo } from "@/types";
+import type { EmbedResponse, SentenceInfo } from "@/types";
 import { Link } from "@chakra-ui/next-js";
 import {
   Box,
@@ -171,10 +171,4 @@ function getDistanceRange(sentences: SentenceInfo[]) {
   const min = Math.min(...distances);
   const max = Math.max(...distances);
   return [min, max];
-}
-
-function getPercentThroughRange(min: number, max: number, value: number) {
-  const range = max - min;
-  const valueInRange = value - min;
-  return Math.max(valueInRange / range, 0);
 }

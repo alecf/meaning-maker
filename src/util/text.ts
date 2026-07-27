@@ -1,4 +1,4 @@
-import { RichSentenceInfo, SentenceInfo } from "@/types";
+import type { RichSentenceInfo, SentenceInfo } from "@/types";
 import { getFromDb, putIntoDb } from "@/util/db";
 import DataLoader from "dataloader";
 import { encode } from "gpt-3-encoder";

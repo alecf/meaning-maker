@@ -1,8 +1,8 @@
 "use client";
 import { ChakraBaseProvider, extendBaseTheme } from "@chakra-ui/react";
 import { theme as baseTheme } from "@chakra-ui/theme";
-import { StyleFunctionProps, mode } from "@chakra-ui/theme-tools";
-import { FC, PropsWithChildren } from "react";
+import { type StyleFunctionProps, mode } from "@chakra-ui/theme-tools";
+import type { FC, PropsWithChildren } from "react";
 
 const {
   Button,
@@ -28,7 +28,7 @@ const theme = extendBaseTheme({
     useSystemColorMode: true,
   },
   styles: {
-    global: (props: Record<string, any> | StyleFunctionProps) => ({
+    global: (props: Record<string, unknown> | StyleFunctionProps) => ({
       body: {
         bg: mode("gray.100", "gray.800")(props),
       },
