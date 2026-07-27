@@ -3,11 +3,17 @@
   "files": {
     "includes": ["**", "!.next", "!node_modules", "!public"]
   },
-  // Formatting is intentionally left to the editor: the previous ESLint setup
-  // enforced no formatting rules, so enabling Biome's formatter here would
-  // reformat the entire codebase in one go.
-  "formatter": { "enabled": false },
-  // Assist (import sorting) had no ESLint equivalent either.
+  // The formatter is enforced in CI via `biome check`; the repo was reformatted
+  // in one pass when it was turned on.
+  // Spaces/2 rather than Biome's default tabs, to match how the codebase was
+  // already written.
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2
+  },
+  // Assist (import sorting) stays off: it rewrites import order, which is a
+  // separate (and noisier) change than formatting.
   "assist": { "enabled": false },
   "linter": {
     "enabled": true,

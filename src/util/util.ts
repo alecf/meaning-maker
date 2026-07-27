@@ -2,7 +2,7 @@
 
 export function trimToFitWindow(
   contentWindow: string[],
-  maxWindowSize: number
+  maxWindowSize: number,
 ) {
   const sentenceCount = contentWindow.filter((s) => s.trim() !== "").length;
   let removeCount = sentenceCount - maxWindowSize;
@@ -23,7 +23,7 @@ export function trimToFitWindow(
 export function cosine_similarity(
   vectorA: number[],
   vectorB: number[],
-  scale: number = 1
+  scale: number = 1,
 ): number {
   const dimensionality = Math.min(vectorA.length, vectorB.length);
   let dotAB = 0;
