@@ -1,0 +1,38 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "files": {
+    "includes": ["**", "!.next", "!node_modules", "!public"]
+  },
+  // Formatting is intentionally left to the editor: the previous ESLint setup
+  // enforced no formatting rules, so enabling Biome's formatter here would
+  // reformat the entire codebase in one go.
+  "formatter": { "enabled": false },
+  // Assist (import sorting) had no ESLint equivalent either.
+  "assist": { "enabled": false },
+  "linter": {
+    "enabled": true,
+    "domains": {
+      // "all" rather than "recommended": the Next domain's recommended subset
+      // omits noSyncScripts, which next/core-web-vitals treated as an error.
+      "next": "all",
+      "react": "recommended"
+    },
+    "rules": {
+      "preset": "recommended",
+      "style": {
+        // next/core-web-vitals enabled no equivalent; the two sites are
+        // required-env-var reads in src/util/db.ts.
+        "noNonNullAssertion": "off"
+      },
+      "suspicious": {
+        // react/jsx-key (which next did enable) only requires that a key be
+        // present, not that it be stable. Opt in separately if wanted.
+        "noArrayIndexKey": "off"
+      },
+      "a11y": {
+        // next enabled only 5 jsx-a11y aria rules, not label association.
+        "noLabelWithoutControl": "off"
+      }
+    }
+  }
+}

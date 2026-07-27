@@ -1,6 +1,6 @@
-import { RichSentenceInfo } from "@/types";
+import type { RichSentenceInfo } from "@/types";
 import { Redis } from "@upstash/redis";
-import { createHash } from "crypto";
+import { createHash } from "node:crypto";
 
 let _redis: Redis | null = null;
 function getRedis() {

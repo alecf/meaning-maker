@@ -22,7 +22,6 @@ updates:
       nextjs:
         patterns:
           - "next"
-          - "eslint-config-next"
           - "@vercel/*"
           - "vercel"
       chakra-and-styling:
@@ -33,7 +32,7 @@ updates:
       typescript-and-linting:
         patterns:
           - "typescript"
-          - "eslint"
+          - "@biomejs/biome"
           - "@types/node"
       nlp-and-ai:
         patterns:

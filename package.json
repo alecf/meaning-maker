@@ -6,7 +6,8 @@
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint .",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint --write .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
@@ -23,8 +24,6 @@
     "autoprefixer": "10.5.4",
     "d3-scale": "^4.0.2",
     "dataloader": "^2.2.3",
-    "eslint": "9.39.5",
-    "eslint-config-next": "16.2.12",
     "framer-motion": "^12.42.2",
     "gpt-3-encoder": "^1.1.4",
     "next": "16.2.12",
@@ -39,6 +38,7 @@
     "vercel": "^57.0.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.5",
     "@types/d3-scale": "^4.0.9",
     "@types/sbd": "^1.0.5",
     "vitest": "^4.1.10",

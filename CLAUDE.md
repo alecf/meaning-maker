@@ -50,8 +50,13 @@ Meaning Maker is a Next.js application that analyzes text to gauge how much new 
 
 ### Linting & Formatting
 
-- ESLint is configured via `next/core-web-vitals`.
-- Run `npm run lint` before committing.
+- Biome is the linter, configured in `biome.jsonc` (it must be `.jsonc`, not
+  `.json` — Biome parses `biome.json` as strict JSON and rejects comments).
+- Next.js and React coverage comes from Biome's `next` and `react` rule
+  domains, which replace the old `next/core-web-vitals` ESLint config.
+- The formatter and assist (import sorting) are deliberately disabled, since
+  the previous ESLint setup enforced neither.
+- Run `npm run lint` before committing; `npm run lint:fix` applies safe fixes.
 - Run `npm run typecheck` to verify TypeScript types.
 
 ## Common Commands
@@ -59,7 +64,8 @@ Meaning Maker is a Next.js application that analyzes text to gauge how much new 
 ```bash
 npm run dev          # Start dev server
 npm run build        # Production build
-npm run lint         # Run ESLint
+npm run lint         # Run Biome linter
+npm run lint:fix     # Run Biome linter and apply safe fixes
 npm run typecheck    # Run TypeScript type checking
 npm test             # Run tests
 ```
