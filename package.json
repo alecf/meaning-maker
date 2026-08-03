@@ -24,7 +24,7 @@
     "autoprefixer": "10.5.4",
     "d3-scale": "^4.0.2",
     "dataloader": "^2.2.3",
-    "framer-motion": "^12.42.2",
+    "framer-motion": "^12.43.0",
     "gpt-3-encoder": "^1.1.4",
     "next": "16.2.12",
     "npm": "^12.0.1",
