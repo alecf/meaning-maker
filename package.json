@@ -16,7 +16,7 @@
     "@chakra-ui/react": "^2.10.10",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
-    "@types/node": "26.1.1",
+    "@types/node": "26.2.0",
     "@types/react": "18.3.12",
     "@types/react-dom": "18.3.1",
     "@upstash/redis": "^1.38.1",
@@ -34,11 +34,11 @@
     "sbd": "^1.0.19",
     "sentence-splitter": "^5.0.1",
     "swr": "^2.4.2",
-    "typescript": "6.0.3",
+    "typescript": "7.0.2",
     "vercel": "^58.9.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.5",
+    "@biomejs/biome": "^2.5.7",
     "@types/d3-scale": "^4.0.9",
     "@types/sbd": "^1.0.5",
     "vitest": "^4.1.10",
