@@ -33,7 +33,7 @@
     "react-dom": "18.3.1",
     "sbd": "^1.0.19",
     "sentence-splitter": "^5.0.1",
-    "swr": "^2.4.2",
+    "swr": "^2.5.1",
     "typescript": "7.0.2",
     "vercel": "^58.9.0"
   },
