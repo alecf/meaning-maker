@@ -38,10 +38,10 @@
     "vercel": "^58.9.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.9",
+    "@biomejs/biome": "^2.5.12",
     "@types/d3-scale": "^4.0.9",
     "@types/sbd": "^1.0.5",
-    "vitest": "^4.1.11",
+    "vitest": "^5.0.0",
     "yaml": "^2.9.0"
   }
 }
