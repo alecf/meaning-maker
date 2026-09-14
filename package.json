@@ -35,7 +35,7 @@
     "sentence-splitter": "^5.0.1",
     "swr": "^2.5.1",
     "typescript": "7.0.2",
-    "vercel": "^59.11.7"
+    "vercel": "^59.16.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.12",
