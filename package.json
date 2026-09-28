@@ -41,7 +41,7 @@
     "@biomejs/biome": "^2.5.14",
     "@types/d3-scale": "^4.0.9",
     "@types/sbd": "^1.0.5",
-    "vitest": "^5.0.1",
+    "vitest": "^5.0.2",
     "yaml": "^2.9.1"
   }
 }
