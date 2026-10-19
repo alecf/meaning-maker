@@ -65,7 +65,7 @@ const theme = extendBaseTheme({
  * sends the SSR styles through useServerInsertedHTML instead, so they never
  * sit among the elements React hydrates.
  */
-const EmotionRegistry: FC<PropsWithChildren> = ({ children }) => {
+const EmotionCacheProvider: FC<PropsWithChildren> = ({ children }) => {
   const [registry] = useState(createEmotionRegistry);
   useServerInsertedHTML(() => {
     const tags = registry.flush();
@@ -86,8 +86,8 @@ const EmotionRegistry: FC<PropsWithChildren> = ({ children }) => {
 
 export const Providers: FC<PropsWithChildren> = ({ children }) => {
   return (
-    <EmotionRegistry>
+    <EmotionCacheProvider>
       <ChakraBaseProvider theme={theme}>{children}</ChakraBaseProvider>
-    </EmotionRegistry>
+    </EmotionCacheProvider>
   );
 };

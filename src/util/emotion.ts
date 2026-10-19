@@ -31,19 +31,25 @@ export interface EmotionRegistry {
  * outlive its replacement.
  */
 export function createEmotionRegistry(): EmotionRegistry {
-  const cache = createCache({ key: "css", prepend: true });
+  const cache = createCache({ key: "css" });
   cache.compat = true;
 
   let pending: { name: string; isGlobal: boolean }[] = [];
-  const insert = cache.insert;
-  cache.insert = (...args) => {
-    const [selector, serialized] = args;
-    if (cache.inserted[serialized.name] === undefined) {
-      // <Global> inserts with an empty selector; everything else has one.
-      pending.push({ name: serialized.name, isGlobal: selector === "" });
-    }
-    return insert(...args);
-  };
+  // Only the server flushes. In the browser, Emotion inserts styles straight
+  // into the document, and tracking them would only grow `pending`.
+  if (typeof document === "undefined") {
+    const insert = cache.insert;
+    cache.insert = (...args) => {
+      const [selector, serialized] = args;
+      if (cache.inserted[serialized.name] === undefined) {
+        pending.push({
+          name: serialized.name,
+          isGlobal: isGlobalInsert(selector, serialized.styles),
+        });
+      }
+      return insert(...args);
+    };
+  }
 
   const flush = (): EmotionStyleTag[] => {
     const flushed = pending;
@@ -71,4 +77,13 @@ export function createEmotionRegistry(): EmotionRegistry {
   };
 
   return { cache, flush };
+}
+
+/**
+ * <Global> inserts with an empty selector. So do keyframes, which Emotion
+ * inserts alongside the class (or global) that uses them; those belong in the
+ * shared tag, where Emotion's own SSR puts them.
+ */
+function isGlobalInsert(selector: string, styles: string): boolean {
+  return selector === "" && !styles.startsWith("@keyframes");
 }

@@ -45,6 +45,21 @@ describe("createEmotionRegistry", () => {
     ]);
   });
 
+  it("keeps keyframes in the shared tag, not a css-global tag", () => {
+    const registry = createEmotionRegistry();
+    // Keyframes are inserted with an empty selector too, like a <Global>.
+    insertGlobal(
+      registry,
+      "spin",
+      "@keyframes spin{to{transform:rotate(1turn);}}",
+    );
+    insertStyle(registry, "abc", "animation:spin 1s;");
+
+    expect(registry.flush().map((tag) => tag.dataEmotion)).toEqual([
+      "css spin abc",
+    ]);
+  });
+
   it("flushes each style only once across stream chunks", () => {
     const registry = createEmotionRegistry();
     insertStyle(registry, "abc", "color:red;");
