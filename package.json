@@ -21,22 +21,19 @@
     "@types/react": "18.3.12",
     "@types/react-dom": "18.3.1",
     "@upstash/redis": "^1.39.0",
-    "@vercel/kv": "^3.0.0",
     "autoprefixer": "10.6.1",
     "d3-scale": "^4.0.2",
     "dataloader": "^2.2.3",
     "framer-motion": "^14.3.0",
     "gpt-3-encoder": "^1.1.4",
     "next": "16.4.2",
-    "npm": "^12.2.0",
     "openai": "^7.27.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "sbd": "^1.0.19",
     "sentence-splitter": "^5.0.1",
     "swr": "^2.5.1",
-    "typescript": "7.0.2",
-    "vercel": "^64.3.1"
+    "typescript": "7.0.2"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.15",
