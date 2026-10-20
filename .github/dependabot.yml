@@ -22,8 +22,6 @@ updates:
       nextjs:
         patterns:
           - "next"
-          - "@vercel/*"
-          - "vercel"
       chakra-and-styling:
         patterns:
           - "@chakra-ui/*"
@@ -38,5 +36,4 @@ updates:
         patterns:
           - "openai"
           - "gpt-3-encoder"
-          - "sbd"
           - "sentence-splitter"
