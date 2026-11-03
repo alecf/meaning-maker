@@ -1,5 +1,4 @@
 import type { SentenceInfo } from "@/types";
-import type { AppBindings } from "@/util/bindings";
 import { withEmbeddingCache } from "@/util/embedding";
 import { createKVEmbeddingCache } from "@/util/kvEmbeddingCache";
 import { extractParagraphs, getAllSentences } from "@/util/text";
@@ -15,7 +14,7 @@ export async function POST(request: Request) {
   const paragraphs = await extractParagraphs(body);
 
   const { env } = await getCloudflareContext({ async: true });
-  const { AI, EMBED_CACHE } = env as unknown as AppBindings;
+  const { AI, EMBED_CACHE } = env;
   const embedder = withEmbeddingCache(
     createWorkersAIEmbedder(AI),
     createKVEmbeddingCache(EMBED_CACHE),

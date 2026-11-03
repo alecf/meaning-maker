@@ -1,4 +1,3 @@
-import type { KVNamespace } from "@cloudflare/workers-types";
 import type { EmbeddingCache } from "./embedding";
 
 /** Embedding cache backed by a Workers KV namespace. Stores the bare vector as JSON. */

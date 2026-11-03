@@ -1,4 +1,3 @@
-import type { Ai } from "@cloudflare/workers-types";
 import { embed } from "ai";
 import { createWorkersAI } from "workers-ai-provider";
 import { type Embedder, stableStringify } from "./embedding";

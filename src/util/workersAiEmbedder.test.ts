@@ -1,4 +1,3 @@
-import type { Ai } from "@cloudflare/workers-types";
 import { describe, expect, it, vi } from "vitest";
 import { embeddingCacheKey } from "./embedding";
 import { createWorkersAIEmbedder, EMBEDDING_CONFIG } from "./workersAiEmbedder";
