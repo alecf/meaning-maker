@@ -11,6 +11,12 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 10
     groups:
+      # Listed before development-dependencies so wrangler (a dev dependency)
+      # is bumped together with the OpenNext adapter that peer-depends on it.
+      cloudflare:
+        patterns:
+          - "@opennextjs/cloudflare"
+          - "wrangler"
       development-dependencies:
         dependency-type: "development"
       react:
@@ -34,6 +40,7 @@ updates:
           - "@types/node"
       nlp-and-ai:
         patterns:
-          - "openai"
-          - "gpt-3-encoder"
+          - "ai"
+          - "workers-ai-provider"
+          - "@huggingface/tokenizers"
           - "sentence-splitter"

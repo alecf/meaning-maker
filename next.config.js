@@ -1,9 +1,10 @@
+const { initOpenNextCloudflareForDev } = require("@opennextjs/cloudflare");
+
 /** @type {import('next').NextConfig} */
-const nextConfig = {
-  webpack: (config) => {
-    config.externals = [...config.externals, "gpt-3-encoder"];
-    return config;
-  },
-};
+const nextConfig = {};
 
 module.exports = nextConfig;
+
+// Makes the Cloudflare bindings (AI, EMBED_CACHE) available to
+// `getCloudflareContext()` during `next dev`.
+initOpenNextCloudflareForDev();
