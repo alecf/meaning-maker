@@ -3,13 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --webpack",
-    "build": "next build --webpack",
-    "start": "next start",
+    "dev": "next dev",
+    "build": "next build",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "lint": "biome lint .",
     "lint:fix": "biome lint --write .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=22"
   },
   "dependencies": {
     "@chakra-ui/next-js": "^2.4.2",
@@ -17,26 +22,28 @@
     "@emotion/cache": "^11.14.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
+    "@huggingface/tokenizers": "^0.2.0",
+    "@opennextjs/cloudflare": "^1.20.15",
     "@types/node": "26.6.6",
     "@types/react": "18.3.12",
     "@types/react-dom": "18.3.1",
-    "@upstash/redis": "^1.40.0",
+    "ai": "^7.0.162",
     "d3-scale": "^4.0.2",
     "dataloader": "^2.2.3",
     "framer-motion": "^14.9.0",
-    "gpt-3-encoder": "^1.1.4",
     "next": "16.4.3",
-    "openai": "^7.45.1",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "sentence-splitter": "^5.0.1",
     "swr": "^2.5.1",
-    "typescript": "7.0.2"
+    "typescript": "7.0.2",
+    "workers-ai-provider": "^4.0.1"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.4",
     "@types/d3-scale": "^4.0.9",
     "vitest": "^5.0.5",
+    "wrangler": "^4.157.0",
     "yaml": "^2.9.1"
   }
 }

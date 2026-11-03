@@ -1,0 +1,25 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "meaning-maker",
+	// OpenNext build output; don't change unless the build output changes.
+	"main": ".open-next/worker.js",
+	"compatibility_date": "2026-11-01",
+	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"assets": {
+		"directory": ".open-next/assets",
+		"binding": "ASSETS"
+	},
+	// Workers AI always runs remotely, even in local dev (`next dev`,
+	// `npm run preview`), so local dev needs `wrangler login` and incurs usage.
+	"ai": {
+		"binding": "AI"
+	},
+	"kv_namespaces": [
+		{
+			// No `id`: Wrangler auto-provisions a namespace named
+			// "meaning-maker-embed-cache" on the first deploy and reuses it on
+			// later deploys. Locally it is simulated and persisted in .wrangler/.
+			"binding": "EMBED_CACHE"
+		}
+	]
+}
