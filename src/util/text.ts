@@ -1,18 +1,12 @@
 import type { RichSentenceInfo, SentenceInfo } from "@/types";
-import { getFromDb, putIntoDb } from "@/util/db";
 import DataLoader from "dataloader";
-import { encode } from "gpt-3-encoder";
-import OpenAI from "openai";
 import { split } from "sentence-splitter";
+import type { Embedder } from "./embedding";
+import { countTokens, MAX_INPUT_TOKENS, truncateToTokens } from "./tokenizer";
 import { cosine_similarity, trimToFitWindow } from "./util";
 
-let _openai: OpenAI | null = null;
-function getOpenAI() {
-  if (!_openai) {
-    _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  }
-  return _openai;
-}
+/** [CLS] and [SEP], added by the BERT tokenizer to every input */
+const SPECIAL_TOKENS_PER_INPUT = 2;
 
 interface SentenceWithAccumulation {
   sentence: string;
@@ -30,11 +24,16 @@ interface SentenceWithAccumulation {
  * "d", "b c d"
  * "e", "c d e"
  * ```
+ *
+ * The window is additionally trimmed (oldest sentences first) so that it fits
+ * within `maxInputTokens` of the embedding model. A single sentence that is
+ * longer than that on its own is truncated to fit.
  */
 export async function* iterateTextWindows(
   sentences: string[],
   maxWindowSize: number,
   minTokenLength: number,
+  maxInputTokens: number = MAX_INPUT_TOKENS,
 ): AsyncGenerator<SentenceWithAccumulation> {
   // The current window of content
   const contentWindow: string[] = [];
@@ -49,14 +48,16 @@ export async function* iterateTextWindows(
       continue;
     }
     localAccumulated.push(sentence);
-    const sentenceTokens = encode(localAccumulated.join(" "));
+    // Exclude [CLS]/[SEP] so the threshold counts only content tokens
+    const sentenceTokenCount =
+      countTokens(localAccumulated.join(" ")) - SPECIAL_TOKENS_PER_INPUT;
 
-    if (sentenceTokens.length <= minTokenLength) {
+    if (sentenceTokenCount <= minTokenLength) {
       console.warn(
         "wasnt enough: ",
         sentence,
         ", ",
-        sentenceTokens.length,
+        sentenceTokenCount,
         localAccumulated,
       );
       continue;
@@ -68,9 +69,14 @@ export async function* iterateTextWindows(
     contentWindow.push(currentSentence);
 
     trimToFitWindow(contentWindow, maxWindowSize);
+    let accumulated = contentWindow.join(" ");
+    while (contentWindow.length > 1 && countTokens(accumulated) > maxInputTokens) {
+      contentWindow.shift();
+      accumulated = contentWindow.join(" ");
+    }
     yield {
       sentence: currentSentence,
-      accumulated: contentWindow.join(" "),
+      accumulated: truncateToTokens(accumulated, maxInputTokens),
     };
   }
 }
@@ -100,9 +106,10 @@ export async function extractParagraphs(body: string) {
 
 export async function getAllSentences(
   paragraphs: string[][],
+  embedder: Embedder,
   maxWindowSize: number,
   minTokenLength: number,
-) {
+): Promise<SentenceInfo[][]> {
   const response: SentenceInfo[][] = [];
   let previousEmbedding: number[] = [];
   for (const paragraph of paragraphs) {
@@ -113,6 +120,7 @@ export async function getAllSentences(
       embedding: newPreviousEmbedding,
     } of iterateEmbeddings(
       paragraph,
+      embedder,
       previousEmbedding,
       maxWindowSize,
       minTokenLength,
@@ -127,24 +135,13 @@ export async function getAllSentences(
 
 async function* iterateEmbeddings(
   sentences: string[],
+  embedder: Embedder,
   previousEmbedding: number[],
   maxWindowSize: number,
   minTokenLength: number,
 ) {
   const embeddingsLoader = new DataLoader<string, number[]>(
-    async (keys: readonly string[]) => {
-      const key = keys[0];
-      const result = await getFromDb(key);
-      if (result) {
-        return [result.embedding];
-      }
-
-      const embedResponse = await getOpenAI().embeddings.create({
-        model: "text-embedding-3-small",
-        input: keys[0],
-      });
-      return [embedResponse.data[0].embedding];
-    },
+    async (keys: readonly string[]) => [await embedder.embed(keys[0])],
     { batch: false, cache: true },
   );
 
@@ -182,7 +179,6 @@ async function* iterateEmbeddings(
       embedding,
     };
     previousEmbedding = embedding;
-    await putIntoDb(accumulated, info);
     yield info;
   }
 }
