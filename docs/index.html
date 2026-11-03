@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meaning Maker</title>
+<meta name="description" content="How Meaning Maker uses text embeddings and sliding windows to show where a piece of writing says something new.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Schibsted+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #f2f4f1;
+  --panel: #fafbf9;
+  --ink: #18212e;
+  --ink-2: #485364;
+  --ink-3: #6d7787;
+  --rule: #d3d8d4;
+  --accent: #3a5cc4;
+  --warm: #c8601f;
+  --hl: #ffe470;
+  --prev: #7a64c4;
+  --ramp-lo: #eef1f8;
+  --ramp-hi: #1b3a8f;
+  --ghost: #b9c0c9;
+  --focus: #3a5cc4;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #121821;
+    --panel: #18202b;
+    --ink: #e6eaf0;
+    --ink-2: #b0b9c7;
+    --ink-3: #8a94a4;
+    --rule: #2b3442;
+    --accent: #7690de;
+    --warm: #cc7640;
+    --hl: #5e4c0c;
+    --prev: #b4a3f0;
+    --ramp-lo: #1c2431;
+    --ramp-hi: #b3c4f6;
+    --ghost: #3e4858;
+    --focus: #9fb4f0;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #121821;
+  --panel: #18202b;
+  --ink: #e6eaf0;
+  --ink-2: #b0b9c7;
+  --ink-3: #8a94a4;
+  --rule: #2b3442;
+  --accent: #7690de;
+  --warm: #cc7640;
+  --hl: #5e4c0c;
+  --prev: #b4a3f0;
+  --ramp-lo: #1c2431;
+  --ramp-hi: #b3c4f6;
+  --ghost: #3e4858;
+  --focus: #9fb4f0;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Literata", Georgia, serif;
+  font-size: 1.125rem;
+  line-height: 1.65;
+  font-optical-sizing: auto;
+}
+.ui, button, input, select, figcaption, .readout, .tip, table {
+  font-family: "Schibsted Grotesk", system-ui, sans-serif;
+}
+a { color: var(--accent); text-underline-offset: 0.18em; }
+a:hover { text-decoration-thickness: 2px; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 3px; }
+
+.wrap { max-width: 64rem; margin: 0 auto; padding: 0 16px; }
+.prose { max-width: 38rem; }
+section { padding: 3.5rem 0 1rem; }
+h1, h2 { font-weight: 600; line-height: 1.15; letter-spacing: -0.01em; }
+h2 { font-size: 1.75rem; margin: 0 0 0.75rem; }
+p { margin: 0 0 1rem; }
+.muted { color: var(--ink-2); }
+
+/* ---------- Hero ---------- */
+header.hero { padding: 3rem 0 1rem; }
+.masthead { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.5rem 1.5rem; }
+.masthead h1 { font-size: 1.25rem; margin: 0; font-family: "Schibsted Grotesk", system-ui, sans-serif; font-weight: 600; letter-spacing: 0; }
+.masthead nav { display: flex; gap: 1.25rem; font-size: 0.95rem; }
+.dek { font-size: clamp(1.6rem, 3.6vw, 2.5rem); line-height: 1.2; max-width: 44rem; margin: 2.25rem 0 1.5rem; font-weight: 400; }
+
+.tabs { display: flex; flex-wrap: wrap; gap: 0.25rem; margin: 0 0 1.25rem; padding: 0; }
+.tabs button, .seg button, .stepbtn {
+  appearance: none; border: 1px solid var(--rule); background: var(--panel); color: var(--ink-2);
+  padding: 0.4rem 0.8rem; border-radius: 999px; font-size: 0.9rem; cursor: pointer; line-height: 1.3;
+}
+.tabs button[aria-selected="true"], .seg button[aria-pressed="true"] {
+  background: var(--ink); color: var(--paper); border-color: var(--ink);
+}
+.tabs button:hover:not([aria-selected="true"]), .seg button:hover:not([aria-pressed="true"]), .stepbtn:hover { border-color: var(--ink-3); color: var(--ink); }
+
+.reading { font-size: clamp(1.2rem, 2.3vw, 1.5rem); line-height: 1.6; max-width: 46rem; }
+.reading p { margin: 0 0 0.9em; }
+.sent { opacity: var(--o, 1); transition: opacity 400ms ease; cursor: default; border-radius: 3px; }
+.sent:hover, .sent:focus-visible { opacity: 1; background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.source { font-size: 0.9rem; color: var(--ink-3); margin-top: 0.5rem; }
+.legend-fade { display: flex; align-items: center; gap: 0.6rem; font-size: 0.9rem; color: var(--ink-2); margin: 0.25rem 0 0; flex-wrap: wrap; }
+.legend-fade .bar { width: 7rem; height: 0.55rem; border-radius: 999px; background: linear-gradient(to right, color-mix(in srgb, var(--ink) 18%, transparent), var(--ink)); }
+
+/* ---------- Figures ---------- */
+figure { margin: 1.75rem 0 1rem; }
+figcaption { font-size: 0.9rem; color: var(--ink-2); margin-top: 0.6rem; max-width: 40rem; line-height: 1.5; }
+.panel { background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 1.25rem; }
+svg text { font-family: "Schibsted Grotesk", system-ui, sans-serif; fill: var(--ink-3); font-size: 12px; }
+
+/* vector barcodes */
+.vec-row { display: grid; grid-template-columns: minmax(0, 15rem) 1fr; gap: 0.4rem 1rem; align-items: center; margin-bottom: 0.65rem; }
+.vec-row .label { font-size: 1rem; line-height: 1.35; }
+.vec-row svg { width: 100%; height: 44px; display: block; }
+.pairs { display: flex; flex-wrap: wrap; gap: 0.5rem 2rem; margin-top: 1rem; font-size: 0.95rem; }
+.pairs b { font-weight: 600; }
+.key { display: flex; gap: 1.25rem; flex-wrap: wrap; font-size: 0.85rem; color: var(--ink-2); margin-top: 0.75rem; }
+.key span::before { content: ""; display: inline-block; width: 0.8rem; height: 0.8rem; border-radius: 2px; margin-right: 0.4rem; vertical-align: -0.1rem; background: var(--sw); }
+
+/* stepper */
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.5rem; margin-bottom: 1rem; }
+.seg { display: inline-flex; gap: 0.25rem; align-items: center; border: 0; margin: 0; padding: 0; min-width: 0; }
+.seg legend { float: left; padding: 0; }
+.seg .lbl { font-size: 0.9rem; color: var(--ink-2); margin-right: 0.35rem; }
+.stepper-nav { display: inline-flex; align-items: center; gap: 0.5rem; }
+.stepper-nav input[type="range"] { width: min(14rem, 40vw); accent-color: var(--accent); }
+.stepbtn { padding: 0.35rem 0.7rem; }
+.windowtext { font-size: 1.05rem; line-height: 1.75; }
+.windowtext p { margin: 0 0 0.75em; }
+.windowtext .sent { color: var(--ink-3); }
+.windowtext .in-cur { color: var(--ink); background: var(--hl); box-decoration-break: clone; -webkit-box-decoration-break: clone; padding: 0.05em 0; }
+.windowtext .in-prev { color: var(--ink); text-decoration: underline 3px var(--prev); text-underline-offset: 0.3em; text-decoration-skip-ink: none; }
+.windowtext .is-new { box-shadow: inset 0 -0.15em 0 color-mix(in srgb, var(--ink) 55%, transparent); }
+.windowkey { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; font-size: 0.88rem; color: var(--ink-2); margin: 0 0 1rem; }
+.windowkey .k-cur { background: var(--hl); color: var(--ink); padding: 0 0.3rem; border-radius: 2px; }
+.windowkey .k-prev { text-decoration: underline 3px var(--prev); text-underline-offset: 0.3em; color: var(--ink); }
+.readout { display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap; margin: 0.25rem 0 1rem; font-size: 0.95rem; color: var(--ink-2); }
+.readout .num { font-size: 2rem; color: var(--ink); font-weight: 500; line-height: 1; }
+
+.chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.grid-line { stroke: var(--rule); stroke-width: 1; }
+.series-ghost { fill: none; stroke: var(--ghost); stroke-width: 1.5; }
+.series-main { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
+.dot { fill: var(--accent); stroke: var(--panel); stroke-width: 2; }
+.dot.cur { fill: var(--ink); }
+.cursor { stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 3 3; }
+.para-tick { stroke: var(--ink-3); stroke-width: 1; }
+.hit { fill: transparent; cursor: pointer; }
+
+.two-up { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+@media (max-width: 760px) {
+  .two-up { grid-template-columns: 1fr; }
+  .vec-row { grid-template-columns: 1fr; }
+}
+
+details { margin-top: 0.75rem; font-size: 0.9rem; }
+#line-table { overflow-x: auto; }
+summary { cursor: pointer; color: var(--ink-2); font-family: "Schibsted Grotesk", system-ui, sans-serif; }
+table { border-collapse: collapse; font-size: 0.85rem; margin-top: 0.5rem; width: 100%; }
+th, td { text-align: left; padding: 0.3rem 0.5rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.tip {
+  position: fixed; z-index: 10; pointer-events: none; max-width: 22rem;
+  background: var(--ink); color: var(--paper); padding: 0.55rem 0.7rem; border-radius: 6px;
+  font-size: 0.85rem; line-height: 1.4; opacity: 0; transition: opacity 120ms;
+}
+.tip b { font-variant-numeric: tabular-nums; }
+.tip.on { opacity: 1; }
+
+footer { padding: 3rem 0 4rem; color: var(--ink-3); font-size: 0.9rem; }
+.credits { max-width: 40rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sent, .tip { transition: none; }
+}
+</style>
+</head>
+<body>
+<div class="tip" id="tip" role="status" aria-live="polite"></div>
+
+<header class="hero wrap">
+  <div class="masthead">
+    <h1>Meaning Maker</h1>
+    <nav class="ui" aria-label="Project links">
+      <a href="https://meaning-maker.alecflett.workers.dev/">Try it with your own text</a>
+      <a href="https://github.com/alecf/meaning-maker">Source</a>
+    </nav>
+  </div>
+  <p class="dek">Some sentences move a piece of writing forward. Others say again what was just said. Meaning Maker measures the difference.</p>
+
+  <div class="tabs ui" role="tablist" aria-label="Example text" id="tabs"></div>
+  <div class="reading" id="hero-text" aria-live="polite"></div>
+  <div class="legend-fade ui"><span>Restates what came just before</span><span class="bar" aria-hidden="true"></span><span>Says something new</span></div>
+  <p class="source" id="hero-source"></p>
+</header>
+
+<main class="wrap">
+  <section aria-labelledby="h-vectors">
+    <div class="prose">
+      <h2 id="h-vectors">A sentence becomes a point in space</h2>
+      <p>An embedding model reads a piece of text and returns a long list of numbers, here 1,024 of them. Each list is a position in a space where texts that mean similar things sit close together, even when they share few words.</p>
+      <p>Below, each stripe is one sentence's embedding, one thin bar per number. The first two sentences say nearly the same thing in different words, and their stripes are almost identical. The third is about something else entirely.</p>
+    </div>
+    <figure class="panel" id="vectors"></figure>
+    <div class="prose">
+      <p>To compare two embeddings, Meaning Maker uses <em>cosine similarity</em>: the angle between the two lists, treated as arrows from the origin. Pointing the same way scores 1, and less related texts score lower. With this model even unrelated sentences stay well above zero (0.37 for the cat and the quarks), so the differences that matter are all in the upper part of the scale.</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-window">
+    <div class="prose">
+      <h2 id="h-window">Comparing each moment to the one before</h2>
+      <p>A single sentence is a small, noisy sample of meaning. A short sentence like "There is nothing surprising in this" barely means anything on its own. So rather than embed sentences one at a time, Meaning Maker embeds a <em>window</em>: the current sentence together with the few before it.</p>
+      <p>Each step, the window slides forward by one sentence. One sentence joins, the oldest one leaves, and the rest stay put. The new window's embedding is compared with the previous window's. If the sentence that joined carried the text somewhere new, the two windows point in different directions and the similarity drops.</p>
+      <p>Step through the text below, and try different window sizes.</p>
+    </div>
+
+    <figure class="panel" id="stepper">
+      <div class="controls ui">
+        <fieldset class="seg" id="wsizes"><legend class="lbl">Window</legend></fieldset>
+        <div class="stepper-nav">
+          <button type="button" class="stepbtn" id="prev" aria-label="Previous sentence">Back</button>
+          <input type="range" id="step" min="1" value="1" aria-label="Sentence">
+          <button type="button" class="stepbtn" id="next" aria-label="Next sentence">Forward</button>
+        </div>
+      </div>
+      <div class="windowkey ui">
+        <span><span class="k-cur">Highlighted</span> current window</span>
+        <span><span class="k-prev">Underlined</span> previous window</span>
+      </div>
+      <div class="readout" id="readout"></div>
+      <div class="windowtext" id="windowtext"></div>
+    </figure>
+
+    <figure class="panel chart" id="linechart">
+      <svg id="line-svg" role="img" aria-labelledby="line-title"><title id="line-title">Similarity to the previous window, sentence by sentence</title></svg>
+      <figcaption>Similarity between each window and the one before it. The blue line is the selected window size; grey lines are the other sizes. Ticks along the bottom mark new paragraphs, where the window starts over. Click a point to jump to it.</figcaption>
+      <details><summary>Show the numbers</summary><div id="line-table"></div></details>
+    </figure>
+
+    <div class="prose">
+      <p>The window size changes what counts as news. With a window of one, every sentence is compared only with the sentence before it, and the line jumps around: almost any two sentences differ. With bigger windows, consecutive windows share most of their text, so similarity runs high, and only a sentence that really changes the subject can pull it down. In the Moby-Dick and Darwin example, the switch from Ishmael's restlessness to the voyage of the Beagle stands out clearly at a window of eight, where a window of one hides it among ordinary sentence-to-sentence variation.</p>
+      <p>Windows start over at each paragraph. The first sentence of a paragraph is compared with the whole last window of the paragraph before, which is why paragraph openings often register as new.</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-path">
+    <div class="prose">
+      <h2 id="h-path">The path a text takes</h2>
+      <p>If each window is a point, a whole text is a path through the space. The space has 1,024 dimensions, so the picture below flattens it to the two directions along which this text's windows vary the most. Distances get distorted in the squash, but the shape survives: long jumps are changes of subject, tight clusters are stretches that keep circling the same idea.</p>
+    </div>
+    <div class="two-up">
+      <figure class="panel chart" id="pathchart">
+        <svg id="path-svg" role="img" aria-labelledby="path-title"><title id="path-title">Path of the text's windows, projected to two dimensions</title></svg>
+        <figcaption>Each dot is one window, from light (start) to dark (end). Dashed segments cross a paragraph break. The ringed dot is the current step.</figcaption>
+      </figure>
+      <figure class="panel chart" id="matrixchart">
+        <svg id="matrix-svg" role="img" aria-labelledby="matrix-title"><title id="matrix-title">Similarity of every sentence to every other sentence</title></svg>
+        <figcaption>Every sentence compared with every other, one sentence at a time (no window). Darker squares are more similar. Blocks along the diagonal are runs of sentences about the same thing.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-shade">
+    <div class="prose">
+      <h2 id="h-shade">From numbers to ink</h2>
+      <p>The shading at the top of this page is the last step. Each sentence gets the similarity between its window and the one before. The least similar sentences in the text are drawn in full ink, the most similar fade toward the paper, and everything else falls in between. The first sentence has nothing to compare with, so it is always drawn in full.</p>
+      <p>The scale is relative to each text, which keeps the result readable whatever the subject. A text that is repetitive throughout will still show its least repetitive sentences in full ink.</p>
+      <p><a href="https://meaning-maker.alecflett.workers.dev/">Try it on your own writing.</a></p>
+    </div>
+  </section>
+</main>
+
+<footer class="wrap ui">
+  <p class="credits" id="credits">Embeddings from <span id="model"></span> on Cloudflare Workers AI. Texts are public domain, via Project Gutenberg. <a href="https://github.com/alecf/meaning-maker">Source on GitHub</a>.</p>
+</footer>
+
+<script>
+(() => {
+  const state = { ex: 0, w: 8, step: 1 };
+  let data = null;
+  const $ = (id) => document.getElementById(id);
+  const NS = "http://www.w3.org/2000/svg";
+  const tip = $("tip");
+
+  const el = (tag, attrs = {}, parent) => {
+    const node = tag.startsWith("svg:") ? document.createElementNS(NS, tag.slice(4)) : document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === "text") node.textContent = v;
+      else if (k === "class") node.setAttribute("class", v);
+      else node.setAttribute(k, v);
+    }
+    if (parent) parent.appendChild(node);
+    return node;
+  };
+  const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const fmt = (x) => x.toFixed(2);
+  const clip = (s, n = 90) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s);
+  const ex = () => data.examples[state.ex];
+  const sims = () => ex().similarity[state.w];
+
+  function showTip(evt, html) {
+    tip.innerHTML = html;
+    tip.classList.add("on");
+    const pad = 14;
+    const r = tip.getBoundingClientRect();
+    let x = evt.clientX + pad;
+    let y = evt.clientY + pad;
+    if (x + r.width > window.innerWidth - 8) x = evt.clientX - r.width - pad;
+    if (y + r.height > window.innerHeight - 8) y = evt.clientY - r.height - pad;
+    tip.style.left = `${Math.max(8, x)}px`;
+    tip.style.top = `${Math.max(8, y)}px`;
+  }
+  const hideTip = () => tip.classList.remove("on");
+  const escapeHtml = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+  function mix(a, b, t) {
+    const pa = a.match(/\w\w/g).map((h) => parseInt(h, 16));
+    const pb = b.match(/\w\w/g).map((h) => parseInt(h, 16));
+    return `rgb(${pa.map((v, i) => Math.round(v + (pb[i] - v) * t)).join(",")})`;
+  }
+
+  /** Group sentence indices by paragraph. */
+  function paragraphs(sentences) {
+    const out = [];
+    sentences.forEach((s, i) => {
+      if (!out[s.paragraph]) out[s.paragraph] = [];
+      out[s.paragraph].push(i);
+    });
+    return out.filter(Boolean);
+  }
+
+  // ---------- Hero: shaded text ----------
+  function renderTabs() {
+    const tabs = $("tabs");
+    tabs.innerHTML = "";
+    data.examples.forEach((e, i) => {
+      const b = el("button", { type: "button", role: "tab", "aria-selected": String(i === state.ex), text: e.title }, tabs);
+      b.addEventListener("click", () => {
+        state.ex = i;
+        state.step = Math.min(state.step, ex().sentences.length - 1);
+        renderAll();
+      });
+    });
+  }
+
+  function opacities() {
+    const s = sims();
+    const rest = s.slice(1);
+    const lo = Math.min(...rest);
+    const hi = Math.max(...rest);
+    return s.map((v, i) => (i === 0 || hi === lo ? 1 : 0.16 + 0.84 * ((hi - v) / (hi - lo)) ** 0.9));
+  }
+
+  function renderHero() {
+    const box = $("hero-text");
+    box.innerHTML = "";
+    const o = opacities();
+    const s = sims();
+    for (const para of paragraphs(ex().sentences)) {
+      const p = el("p", {}, box);
+      para.forEach((i, k) => {
+        const span = el("span", { class: "sent", tabindex: "0", text: ex().sentences[i].text }, p);
+        span.style.setProperty("--o", o[i].toFixed(3));
+        const label = i === 0 ? "First sentence: nothing to compare with yet." : `Similarity to the previous window: <b>${fmt(s[i])}</b>`;
+        span.addEventListener("mousemove", (e) => showTip(e, label));
+        span.addEventListener("mouseleave", hideTip);
+        span.addEventListener("focus", () => {
+          const r = span.getBoundingClientRect();
+          showTip({ clientX: r.left, clientY: r.bottom }, label);
+        });
+        span.addEventListener("blur", hideTip);
+        if (k < para.length - 1) p.appendChild(document.createTextNode(" "));
+      });
+    }
+    $("hero-source").textContent = `${ex().source}. Window of ${state.w} sentence${state.w > 1 ? "s" : ""}.`;
+  }
+
+  // ---------- Vector barcodes ----------
+  function renderVectors() {
+    const fig = $("vectors");
+    fig.innerHTML = "";
+    const { sentences, vectors, similarity } = data.vectorDemo;
+    const maxAbs = Math.max(...vectors.flat().map(Math.abs));
+    const neutral = css("--panel");
+    const pos = css("--accent");
+    const neg = css("--warm");
+    sentences.forEach((s, r) => {
+      const row = el("div", { class: "vec-row" }, fig);
+      el("div", { class: "label", text: `“${s}”` }, row);
+      const svg = el("svg:svg", { viewBox: `0 0 ${vectors[r].length} 44`, preserveAspectRatio: "none", role: "img", "aria-label": `Embedding of: ${s}` }, row);
+      vectors[r].forEach((v, i) => {
+        const t = Math.min(1, Math.abs(v) / (maxAbs * 0.6));
+        el("svg:rect", { x: i, y: 0, width: 1.05, height: 44, fill: mix(neutral, v >= 0 ? pos : neg, t) }, svg);
+      });
+    });
+    const key = el("div", { class: "key ui" }, fig);
+    el("span", { text: "Positive value" }, key).style.setProperty("--sw", pos);
+    el("span", { text: "Negative value" }, key).style.setProperty("--sw", neg);
+    el("span", { text: "Near zero" }, key).style.setProperty("--sw", css("--rule"));
+    const pairs = el("div", { class: "pairs ui" }, fig);
+    pairs.innerHTML = `<span>First and second: <b>${fmt(similarity[0][1])}</b></span><span>First and third: <b>${fmt(similarity[0][2])}</b></span><span>Second and third: <b>${fmt(similarity[1][2])}</b></span>`;
+  }
+
+  // ---------- Window stepper ----------
+  function renderWindowSizes() {
+    const seg = $("wsizes");
+    for (const b of seg.querySelectorAll("button")) b.remove();
+    for (const w of data.windowSizes) {
+      const b = el("button", { type: "button", "aria-pressed": String(w === state.w), "aria-label": `Window of ${w} sentence${w > 1 ? "s" : ""}`, text: String(w) }, seg);
+      b.addEventListener("click", () => { state.w = w; renderAll(); });
+    }
+  }
+
+  function windowRange(i) {
+    return [ex().windowStart[state.w][i], i];
+  }
+
+  function renderStepper() {
+    const n = ex().sentences.length;
+    const range = $("step");
+    range.max = String(n - 1);
+    range.value = String(state.step);
+    $("prev").disabled = state.step <= 1;
+    $("next").disabled = state.step >= n - 1;
+
+    const [cs, ce] = windowRange(state.step);
+    const [ps, pe] = windowRange(state.step - 1);
+    const box = $("windowtext");
+    box.innerHTML = "";
+    for (const para of paragraphs(ex().sentences)) {
+      const p = el("p", {}, box);
+      para.forEach((i, k) => {
+        const classes = ["sent"];
+        if (i >= cs && i <= ce) classes.push("in-cur");
+        if (i >= ps && i <= pe) classes.push("in-prev");
+        if (i === state.step) classes.push("is-new");
+        el("span", { class: classes.join(" "), text: ex().sentences[i].text }, p);
+        if (k < para.length - 1) p.appendChild(document.createTextNode(" "));
+      });
+    }
+    const s = sims()[state.step];
+    const all = sims().slice(1);
+    const rank = all.filter((v) => v < s).length;
+    const note = rank === 0 ? "The biggest change of direction in this text." : rank === all.length - 1 ? "The least change anywhere in this text." : `${rank} of ${all.length} steps changed direction more.`;
+    $("readout").innerHTML = `<span>Sentence ${state.step + 1} of ${n}.</span><span>Similarity to the previous window</span><span class="num">${fmt(s)}</span><span>${note}</span>`;
+    const cur = box.querySelector(".is-new");
+    if (cur && document.activeElement && ["step", "prev", "next"].includes(document.activeElement.id)) {
+      cur.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    }
+  }
+
+  function setStep(i) {
+    const n = ex().sentences.length;
+    state.step = Math.max(1, Math.min(n - 1, i));
+    renderStepper();
+    renderLine();
+    renderPath();
+    renderMatrix();
+  }
+
+  // ---------- Line chart ----------
+  function renderLine() {
+    const svg = $("line-svg");
+    const W = 900, H = 300, m = { t: 16, r: 16, b: 34, l: 44 };
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    [...svg.childNodes].forEach((c) => { if (c.nodeName !== "title") c.remove(); });
+    const e = ex();
+    const n = e.sentences.length;
+    const allVals = data.windowSizes.flatMap((w) => e.similarity[w].slice(1));
+    const yLo = Math.floor(Math.min(...allVals) * 10) / 10;
+    const x = (i) => m.l + ((i - 1) / Math.max(1, n - 2)) * (W - m.l - m.r);
+    const y = (v) => m.t + (1 - (v - yLo) / (1 - yLo)) * (H - m.t - m.b);
+
+    for (let v = yLo; v <= 1.0001; v += 0.1) {
+      el("svg:line", { class: "grid-line", x1: m.l, x2: W - m.r, y1: y(v), y2: y(v) }, svg);
+      el("svg:text", { x: m.l - 8, y: y(v) + 4, "text-anchor": "end", text: v.toFixed(1) }, svg);
+    }
+    e.sentences.forEach((s, i) => {
+      if (i > 0 && s.paragraph !== e.sentences[i - 1].paragraph) {
+        el("svg:line", { class: "para-tick", x1: x(i), x2: x(i), y1: H - m.b, y2: H - m.b + 7 }, svg);
+      }
+      if (i > 0 && (i === 1 || i === n - 1 || (i % 5 === 0 && n - 1 - i > 2))) {
+        el("svg:text", { x: x(i), y: H - 8, "text-anchor": "middle", text: String(i + 1) }, svg);
+      }
+    });
+    el("svg:text", { x: W - m.r, y: H - 8, "text-anchor": "end", text: "" }, svg);
+
+    const line = (vals) => vals.slice(1).map((v, k) => `${k ? "L" : "M"}${x(k + 1).toFixed(1)},${y(v).toFixed(1)}`).join("");
+    for (const w of data.windowSizes) {
+      if (w !== state.w) el("svg:path", { class: "series-ghost", d: line(e.similarity[w]) }, svg);
+    }
+    el("svg:line", { class: "cursor", x1: x(state.step), x2: x(state.step), y1: m.t, y2: H - m.b }, svg);
+    el("svg:path", { class: "series-main", d: line(sims()) }, svg);
+    sims().forEach((v, i) => {
+      if (i === 0) return;
+      el("svg:circle", { class: i === state.step ? "dot cur" : "dot", cx: x(i), cy: y(v), r: i === state.step ? 6 : 4 }, svg);
+    });
+    // Hit targets wider than the marks.
+    const colW = (W - m.l - m.r) / Math.max(1, n - 2);
+    sims().forEach((v, i) => {
+      if (i === 0) return;
+      const r = el("svg:rect", { class: "hit", x: x(i) - colW / 2, y: m.t, width: colW, height: H - m.t - m.b }, svg);
+      const html = `<b>Sentence ${i + 1}: ${fmt(v)}</b><br>${escapeHtml(clip(e.sentences[i].text))}`;
+      r.addEventListener("mousemove", (evt) => showTip(evt, html));
+      r.addEventListener("mouseleave", hideTip);
+      r.addEventListener("click", () => setStep(i));
+    });
+
+    const rows = e.sentences.map((s, i) => `<tr><td class="n">${i + 1}</td><td>${escapeHtml(clip(s.text, 70))}</td>${data.windowSizes.map((w) => `<td class="n">${i === 0 ? "–" : fmt(e.similarity[w][i])}</td>`).join("")}</tr>`).join("");
+    $("line-table").innerHTML = `<table><thead><tr><th class="n">#</th><th>Sentence</th>${data.windowSizes.map((w) => `<th class="n">Window ${w}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table>`;
+  }
+
+  // ---------- Path ----------
+  function renderPath() {
+    const svg = $("path-svg");
+    const S = 420, pad = 28;
+    svg.setAttribute("viewBox", `0 0 ${S} ${S}`);
+    [...svg.childNodes].forEach((c) => { if (c.nodeName !== "title") c.remove(); });
+    const e = ex();
+    const pts = e.path[state.w];
+    const xs = pts.map((p) => p[0]);
+    const ys = pts.map((p) => p[1]);
+    const span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) || 1;
+    const cx = (Math.max(...xs) + Math.min(...xs)) / 2;
+    const cy = (Math.max(...ys) + Math.min(...ys)) / 2;
+    const px = (p) => S / 2 + ((p[0] - cx) / span) * (S - 2 * pad);
+    const py = (p) => S / 2 - ((p[1] - cy) / span) * (S - 2 * pad);
+    const lo = css("--ramp-lo"), hi = css("--ramp-hi");
+    const n = pts.length;
+    const col = (i) => mix(lo, hi, 0.25 + 0.75 * (i / Math.max(1, n - 1)));
+
+    for (let i = 1; i < n; i++) {
+      const crosses = e.sentences[i].paragraph !== e.sentences[i - 1].paragraph;
+      el("svg:line", { x1: px(pts[i - 1]), y1: py(pts[i - 1]), x2: px(pts[i]), y2: py(pts[i]), stroke: col(i), "stroke-width": 2, "stroke-dasharray": crosses ? "4 4" : "none", "stroke-linecap": "round" }, svg);
+    }
+    pts.forEach((p, i) => {
+      const isCur = i === state.step;
+      if (isCur) el("svg:circle", { cx: px(p), cy: py(p), r: 11, fill: "none", stroke: css("--ink"), "stroke-width": 2 }, svg);
+      el("svg:circle", { cx: px(p), cy: py(p), r: 5.5, fill: col(i), stroke: css("--panel"), "stroke-width": 2 }, svg);
+      const hit = el("svg:circle", { class: "hit", cx: px(p), cy: py(p), r: 14 }, svg);
+      const html = `<b>Window ending at sentence ${i + 1}</b><br>${escapeHtml(clip(e.sentences[i].text))}`;
+      hit.addEventListener("mousemove", (evt) => showTip(evt, html));
+      hit.addEventListener("mouseleave", hideTip);
+      hit.addEventListener("click", () => setStep(i));
+    });
+    const lab = (i, text) => el("svg:text", { x: px(pts[i]) + 10, y: py(pts[i]) - 10, text }, svg);
+    lab(0, "start");
+    lab(n - 1, "end");
+  }
+
+  // ---------- Matrix ----------
+  function renderMatrix() {
+    const svg = $("matrix-svg");
+    const S = 420, pad = 4;
+    svg.setAttribute("viewBox", `0 0 ${S} ${S}`);
+    [...svg.childNodes].forEach((c) => { if (c.nodeName !== "title") c.remove(); });
+    const e = ex();
+    const M = e.matrix;
+    const n = M.length;
+    const off = M.flatMap((row, i) => row.filter((_, j) => j !== i));
+    const lo = Math.min(...off), hi = Math.max(...off);
+    const cell = (S - 2 * pad) / n;
+    const a = css("--ramp-lo"), b = css("--ramp-hi");
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n; j++) {
+        const v = M[i][j];
+        const t = i === j ? 1 : (v - lo) / (hi - lo || 1);
+        const r = el("svg:rect", { x: pad + j * cell + 1, y: pad + i * cell + 1, width: cell - 2, height: cell - 2, rx: 2, fill: mix(a, b, t) }, svg);
+        const html = i === j
+          ? `<b>Sentence ${i + 1}</b><br>${escapeHtml(clip(e.sentences[i].text))}`
+          : `<b>${fmt(v)}</b> between sentences ${i + 1} and ${j + 1}<br>${escapeHtml(clip(e.sentences[i].text, 60))}<br>${escapeHtml(clip(e.sentences[j].text, 60))}`;
+        r.addEventListener("mousemove", (evt) => showTip(evt, html));
+        r.addEventListener("mouseleave", hideTip);
+        r.addEventListener("click", () => setStep(Math.max(i, j, 1)));
+      }
+    }
+    const k = state.step;
+    el("svg:rect", { x: pad + k * cell, y: pad, width: cell, height: S - 2 * pad, fill: "none", stroke: css("--ink"), "stroke-width": 1.5, rx: 3 }, svg);
+    el("svg:rect", { x: pad, y: pad + k * cell, width: S - 2 * pad, height: cell, fill: "none", stroke: css("--ink"), "stroke-width": 1.5, rx: 3 }, svg);
+  }
+
+  function renderAll() {
+    renderTabs();
+    renderHero();
+    renderWindowSizes();
+    renderStepper();
+    renderLine();
+    renderPath();
+    renderMatrix();
+  }
+
+  function wire() {
+    $("step").addEventListener("input", (e) => setStep(Number(e.target.value)));
+    $("prev").addEventListener("click", () => setStep(state.step - 1));
+    $("next").addEventListener("click", () => setStep(state.step + 1));
+    matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { renderVectors(); renderAll(); });
+  }
+
+  fetch("data.json")
+    .then((r) => {
+      if (!r.ok) throw new Error(`data.json: HTTP ${r.status}`);
+      return r.json();
+    })
+    .then((d) => {
+      data = d;
+      state.w = d.defaultWindowSize;
+      $("model").textContent = d.model;
+      wire();
+      renderVectors();
+      renderAll();
+    })
+    .catch((err) => {
+      $("hero-text").textContent = `The example data didn't load (${err.message}). Reload the page to try again.`;
+    });
+})();
+</script>
+</body>
+</html>

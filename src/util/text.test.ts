@@ -32,6 +32,14 @@ describe("extractParagraphs", () => {
     expect(result.length).toBe(2);
   });
 
+  it("keeps paragraphs apart when a sentence ends like an abbreviation", async () => {
+    // sentence-splitter reads "me." as an abbreviation and would otherwise
+    // merge these two paragraphs into a single sentence.
+    const text = "It was with me.\n\nNow we are engaged.";
+    const result = await extractParagraphs(text);
+    expect(result).toEqual([["It was with me."], ["Now we are engaged."]]);
+  });
+
   it("returns a single group for empty string", async () => {
     const result = await extractParagraphs("");
     expect(result).toBeDefined();

@@ -7,6 +7,7 @@
     "build": "next build",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "explainer:data": "node scripts/run.mjs scripts/build-explainer-data.ts",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "lint": "biome lint .",
     "lint:fix": "biome lint --write .",

@@ -81,27 +81,22 @@ export async function* iterateTextWindows(
   }
 }
 
-export async function extractParagraphs(body: string) {
-  const paragraphHunks = split(body);
-  const paragraphs = paragraphHunks.reduce<string[][]>(
-    (acc, hunk) => {
-      if (hunk.type === "Sentence") {
-        acc[acc.length - 1].push(hunk.raw);
-        return acc;
-      }
-      if (hunk.type === "WhiteSpace") {
-        if (hunk.raw.replace(/ +?/g, "")) {
-          acc.push([]);
-        }
-        return acc;
-      }
-      console.log("unkonwn node type: ", hunk.type);
-      return acc;
-    },
-    [[]] as string[][],
-  );
-
-  return paragraphs;
+/**
+ * Split text into paragraphs (one per non-blank line) of sentences.
+ *
+ * Paragraphs are split on line breaks *before* sentence splitting, because
+ * sentence-splitter can join sentences across a line break when the first
+ * ends in something it takes for an abbreviation (e.g. "with me.").
+ */
+export async function extractParagraphs(body: string): Promise<string[][]> {
+  return body
+    .split(/\r?\n/)
+    .filter((line) => line.trim())
+    .map((line) =>
+      split(line)
+        .filter((node) => node.type === "Sentence")
+        .map((node) => node.raw),
+    );
 }
 
 export async function getAllSentences(
