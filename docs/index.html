@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Meaning Maker</title>
-<meta name="description" content="How Meaning Maker uses text embeddings and sliding windows to show where a piece of writing says something new.">
+<meta name="description" content="An experiment with text embeddings: shading each sentence by how far it moves a text from what came just before.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Schibsted+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
@@ -12,14 +12,13 @@
 :root {
   --paper: #f2f4f1;
   --panel: #fafbf9;
+  --well: #e4e8e3;
   --ink: #18212e;
   --ink-2: #485364;
   --ink-3: #6d7787;
   --rule: #d3d8d4;
   --accent: #3a5cc4;
   --warm: #c8601f;
-  --hl: #ffe470;
-  --prev: #7a64c4;
   --ramp-lo: #eef1f8;
   --ramp-hi: #1b3a8f;
   --ghost: #b9c0c9;
@@ -30,14 +29,13 @@
   :root:not([data-theme="light"]) {
     --paper: #121821;
     --panel: #18202b;
+    --well: #0d1219;
     --ink: #e6eaf0;
     --ink-2: #b0b9c7;
     --ink-3: #8a94a4;
     --rule: #2b3442;
     --accent: #7690de;
     --warm: #cc7640;
-    --hl: #5e4c0c;
-    --prev: #b4a3f0;
     --ramp-lo: #1c2431;
     --ramp-hi: #b3c4f6;
     --ghost: #3e4858;
@@ -48,14 +46,13 @@
 :root[data-theme="dark"] {
   --paper: #121821;
   --panel: #18202b;
+  --well: #0d1219;
   --ink: #e6eaf0;
   --ink-2: #b0b9c7;
   --ink-3: #8a94a4;
   --rule: #2b3442;
   --accent: #7690de;
   --warm: #cc7640;
-  --hl: #5e4c0c;
-  --prev: #b4a3f0;
   --ramp-lo: #1c2431;
   --ramp-hi: #b3c4f6;
   --ghost: #3e4858;
@@ -83,71 +80,109 @@ a:hover { text-decoration-thickness: 2px; }
 
 .wrap { max-width: 64rem; margin: 0 auto; padding: 0 16px; }
 .prose { max-width: 38rem; }
-section { padding: 3.5rem 0 1rem; }
+section { padding: 3rem 0 0.5rem; }
 h1, h2 { font-weight: 600; line-height: 1.15; letter-spacing: -0.01em; }
-h2 { font-size: 1.75rem; margin: 0 0 0.75rem; }
+h2 { font-size: 1.6rem; margin: 0 0 0.75rem; }
 p { margin: 0 0 1rem; }
-.muted { color: var(--ink-2); }
 
-/* ---------- Hero ---------- */
-header.hero { padding: 3rem 0 1rem; }
+/* ---------- Header + example tray ---------- */
+header.hero { padding: 2.5rem 0 0.5rem; }
 .masthead { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.5rem 1.5rem; }
 .masthead h1 { font-size: 1.25rem; margin: 0; font-family: "Schibsted Grotesk", system-ui, sans-serif; font-weight: 600; letter-spacing: 0; }
 .masthead nav { display: flex; gap: 1.25rem; font-size: 0.95rem; }
-.dek { font-size: clamp(1.6rem, 3.6vw, 2.5rem); line-height: 1.2; max-width: 44rem; margin: 2.25rem 0 1.5rem; font-weight: 400; }
+.dek { font-size: clamp(1.4rem, 3vw, 2rem); line-height: 1.25; max-width: 40rem; margin: 2rem 0 1.75rem; }
 
-.tabs { display: flex; flex-wrap: wrap; gap: 0.25rem; margin: 0 0 1.25rem; padding: 0; }
-.tabs button, .seg button, .stepbtn {
+.specimen { margin: 0; background: var(--well); border: 1px solid var(--rule); border-radius: 12px; padding: 0.75rem; }
+.specimen-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 1rem; padding: 0.15rem 0.35rem 0.7rem; }
+.specimen-title { font-family: "Schibsted Grotesk", system-ui, sans-serif; font-size: 0.95rem; font-weight: 600; color: var(--ink-2); margin: 0; letter-spacing: 0; }
+.sheet { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 1.25rem 1.5rem; max-height: 26rem; overflow-y: auto; }
+.specimen-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.25rem 1.5rem; padding: 0.7rem 0.35rem 0.1rem; font-size: 0.85rem; color: var(--ink-2); }
+.specimen-foot p { margin: 0; }
+
+.tabs { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.tabs button, .seg button {
   appearance: none; border: 1px solid var(--rule); background: var(--panel); color: var(--ink-2);
-  padding: 0.4rem 0.8rem; border-radius: 999px; font-size: 0.9rem; cursor: pointer; line-height: 1.3;
+  padding: 0.3rem 0.75rem; border-radius: 999px; font-size: 0.85rem; cursor: pointer; line-height: 1.3;
 }
 .tabs button[aria-selected="true"], .seg button[aria-pressed="true"] {
   background: var(--ink); color: var(--paper); border-color: var(--ink);
 }
-.tabs button:hover:not([aria-selected="true"]), .seg button:hover:not([aria-pressed="true"]), .stepbtn:hover { border-color: var(--ink-3); color: var(--ink); }
+.tabs button:hover:not([aria-selected="true"]), .seg button:hover:not([aria-pressed="true"]) { border-color: var(--ink-3); color: var(--ink); }
 
-.reading { font-size: clamp(1.2rem, 2.3vw, 1.5rem); line-height: 1.6; max-width: 46rem; }
-.reading p { margin: 0 0 0.9em; }
+.reading { font-size: clamp(1.05rem, 1.8vw, 1.2rem); line-height: 1.65; max-width: 44rem; }
+.reading p { margin: 0 0 0.8em; }
+.reading p:last-child { margin-bottom: 0; }
 .sent { opacity: var(--o, 1); transition: opacity 400ms ease; cursor: default; border-radius: 3px; }
 .sent:hover, .sent:focus-visible { opacity: 1; background: color-mix(in srgb, var(--accent) 12%, transparent); }
-.source { font-size: 0.9rem; color: var(--ink-3); margin-top: 0.5rem; }
-.legend-fade { display: flex; align-items: center; gap: 0.6rem; font-size: 0.9rem; color: var(--ink-2); margin: 0.25rem 0 0; flex-wrap: wrap; }
-.legend-fade .bar { width: 7rem; height: 0.55rem; border-radius: 999px; background: linear-gradient(to right, color-mix(in srgb, var(--ink) 18%, transparent), var(--ink)); }
+.legend-fade { display: flex; align-items: center; gap: 0.5rem; }
+.legend-fade .bar { width: 6rem; height: 0.5rem; border-radius: 999px; background: linear-gradient(to right, color-mix(in srgb, var(--ink) 18%, transparent), var(--ink)); }
 
 /* ---------- Figures ---------- */
-figure { margin: 1.75rem 0 1rem; }
-figcaption { font-size: 0.9rem; color: var(--ink-2); margin-top: 0.6rem; max-width: 40rem; line-height: 1.5; }
+figure { margin: 1.5rem 0 1rem; }
+.lab figure { margin: 1rem 0; }
+figcaption { font-size: 0.88rem; color: var(--ink-2); margin-top: 0.6rem; max-width: 40rem; line-height: 1.5; }
 .panel { background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 1.25rem; }
 svg text { font-family: "Schibsted Grotesk", system-ui, sans-serif; fill: var(--ink-3); font-size: 12px; }
 
-/* vector barcodes */
-.vec-row { display: grid; grid-template-columns: minmax(0, 15rem) 1fr; gap: 0.4rem 1rem; align-items: center; margin-bottom: 0.65rem; }
-.vec-row .label { font-size: 1rem; line-height: 1.35; }
-.vec-row svg { width: 100%; height: 44px; display: block; }
-.pairs { display: flex; flex-wrap: wrap; gap: 0.5rem 2rem; margin-top: 1rem; font-size: 0.95rem; }
-.pairs b { font-weight: 600; }
-.key { display: flex; gap: 1.25rem; flex-wrap: wrap; font-size: 0.85rem; color: var(--ink-2); margin-top: 0.75rem; }
-.key span::before { content: ""; display: inline-block; width: 0.8rem; height: 0.8rem; border-radius: 2px; margin-right: 0.4rem; vertical-align: -0.1rem; background: var(--sw); }
+/* vectors: stripes + arrow sketch */
+.vec-layout { display: grid; grid-template-columns: minmax(0, 1fr) 17rem; gap: 1.5rem; align-items: center; }
+.vec-row { display: grid; grid-template-columns: 1.6rem minmax(0, 1fr); gap: 0.2rem 0.6rem; align-items: center; margin-bottom: 0.8rem; }
+.vec-row .label { font-size: 0.95rem; line-height: 1.35; }
+.vec-row svg { width: 100%; height: 30px; display: block; border-radius: 3px; }
+.tag { display: inline-grid; place-items: center; width: 1.5rem; height: 1.5rem; border-radius: 50%; background: var(--ink); color: var(--paper); font: 600 0.8rem/1 "Schibsted Grotesk", system-ui, sans-serif; }
+.vec-row .tag { grid-row: span 2; }
+.key { display: flex; gap: 1.25rem; flex-wrap: wrap; font-size: 0.82rem; color: var(--ink-2); margin-top: 0.25rem; }
+.key span::before { content: ""; display: inline-block; width: 0.75rem; height: 0.75rem; border-radius: 2px; margin-right: 0.35rem; vertical-align: -0.1rem; background: var(--sw); }
+#arrows { width: 100%; height: auto; display: block; overflow: visible; }
+#arrows .arc { fill: none; stroke: var(--ink-3); stroke-width: 1.25; }
+#arrows .axis { stroke: var(--rule); stroke-width: 1; }
+#arrows .score { fill: var(--ink); font-weight: 600; font-size: 13px; }
 
 /* stepper */
-.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.5rem; margin-bottom: 1rem; }
+.lab { margin-top: 1.5rem; }
+.dock {
+  position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1.25rem;
+  padding: 0.6rem 0.75rem; margin: 0 -0.75rem; background: color-mix(in srgb, var(--paper) 90%, transparent);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); border-bottom: 1px solid var(--rule);
+}
+.dock select {
+  font-size: 0.88rem; padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid var(--rule);
+  background: var(--panel); color: var(--ink); max-width: 100%;
+}
 .seg { display: inline-flex; gap: 0.25rem; align-items: center; border: 0; margin: 0; padding: 0; min-width: 0; }
-.seg legend { float: left; padding: 0; }
-.seg .lbl { font-size: 0.9rem; color: var(--ink-2); margin-right: 0.35rem; }
-.stepper-nav { display: inline-flex; align-items: center; gap: 0.5rem; }
-.stepper-nav input[type="range"] { width: min(14rem, 40vw); accent-color: var(--accent); }
-.stepbtn { padding: 0.35rem 0.7rem; }
-.windowtext { font-size: 1.05rem; line-height: 1.75; }
-.windowtext p { margin: 0 0 0.75em; }
+.seg legend { float: left; padding: 0; font-size: 0.88rem; color: var(--ink-2); margin-right: 0.35rem; }
+.transport { display: inline-flex; align-items: center; gap: 0.4rem; }
+.transport input[type="range"] { width: min(12rem, 34vw); accent-color: var(--accent); margin: 0 0.25rem; }
+.icon-btn {
+  appearance: none; display: inline-grid; place-items: center; width: 2.25rem; height: 2.25rem; padding: 0;
+  border-radius: 50%; border: 1px solid var(--rule); background: var(--panel); color: var(--ink); cursor: pointer;
+}
+.icon-btn:hover:not(:disabled) { border-color: var(--ink-3); }
+.icon-btn:disabled { color: var(--ghost); cursor: default; }
+.icon-btn svg { width: 1rem; height: 1rem; fill: currentColor; }
+.icon-btn.play { width: 2.6rem; height: 2.6rem; background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+.windowkey { display: flex; flex-wrap: wrap; gap: 0.4rem 1.25rem; font-size: 0.85rem; color: var(--ink-2); margin: 0 0 0.75rem; }
+.windowkey .sw { padding: 0 0.3rem; border-radius: 2px; color: var(--ink); }
+.windowtext {
+  position: relative; font-size: 1rem; line-height: 2.3; max-height: 13.5rem; overflow-y: auto;
+  padding: 0.9rem 0.25rem 0.25rem; border-top: 1px solid var(--rule);
+}
+.windowtext p { margin: 0 0 0.5em; }
 .windowtext .sent { color: var(--ink-3); }
-.windowtext .in-cur { color: var(--ink); background: var(--hl); box-decoration-break: clone; -webkit-box-decoration-break: clone; padding: 0.05em 0; }
-.windowtext .in-prev { color: var(--ink); text-decoration: underline 3px var(--prev); text-underline-offset: 0.3em; text-decoration-skip-ink: none; }
-.windowtext .is-new { box-shadow: inset 0 -0.15em 0 color-mix(in srgb, var(--ink) 55%, transparent); }
-.windowkey { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; font-size: 0.88rem; color: var(--ink-2); margin: 0 0 1rem; }
-.windowkey .k-cur { background: var(--hl); color: var(--ink); padding: 0 0.3rem; border-radius: 2px; }
-.windowkey .k-prev { text-decoration: underline 3px var(--prev); text-underline-offset: 0.3em; color: var(--ink); }
-.readout { display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap; margin: 0.25rem 0 1rem; font-size: 0.95rem; color: var(--ink-2); }
-.readout .num { font-size: 2rem; color: var(--ink); font-weight: 500; line-height: 1; }
+.in-cur { color: var(--ink); background: color-mix(in srgb, var(--accent) 20%, transparent); box-decoration-break: clone; -webkit-box-decoration-break: clone; padding: 0.12em 0; }
+.windowtext .in-cur { color: var(--ink); }
+.in-prev { text-decoration: underline 2px var(--ink-3); text-underline-offset: 0.35em; text-decoration-skip-ink: none; }
+.windowtext .in-prev { color: var(--ink-2); }
+.windowtext .is-new, .windowkey .is-new { background: color-mix(in srgb, var(--accent) 40%, transparent); }
+.score-anchor { position: relative; display: inline-block; width: 0; height: 1em; }
+.score-badge {
+  position: absolute; left: 0; bottom: calc(100% + 0.05em); white-space: nowrap;
+  font: 600 0.72rem/1.35 "Schibsted Grotesk", system-ui, sans-serif;
+  background: var(--ink); color: var(--paper); padding: 0.05rem 0.4rem; border-radius: 4px;
+}
+.readout { font-size: 0.88rem; color: var(--ink-2); margin: 0 0 0 auto; }
+.readout b { color: var(--ink); font-weight: 600; }
 
 .chart svg { width: 100%; height: auto; display: block; overflow: visible; }
 .grid-line { stroke: var(--rule); stroke-width: 1; }
@@ -161,11 +196,12 @@ svg text { font-family: "Schibsted Grotesk", system-ui, sans-serif; fill: var(--
 
 .two-up { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
 @media (max-width: 760px) {
-  .two-up { grid-template-columns: 1fr; }
-  .vec-row { grid-template-columns: 1fr; }
+  .two-up, .vec-layout { grid-template-columns: 1fr; }
+  #arrows { max-width: 18rem; margin: 0 auto; }
+  .sheet { padding: 1rem; }
 }
 
-details { margin-top: 0.75rem; font-size: 0.9rem; }
+details { margin-top: 0.75rem; font-size: 0.88rem; }
 #line-table { overflow-x: auto; }
 summary { cursor: pointer; color: var(--ink-2); font-family: "Schibsted Grotesk", system-ui, sans-serif; }
 table { border-collapse: collapse; font-size: 0.85rem; margin-top: 0.5rem; width: 100%; }
@@ -180,7 +216,7 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space:
 .tip b { font-variant-numeric: tabular-nums; }
 .tip.on { opacity: 1; }
 
-footer { padding: 3rem 0 4rem; color: var(--ink-3); font-size: 0.9rem; }
+footer { padding: 2.5rem 0 4rem; color: var(--ink-3); font-size: 0.88rem; }
 .credits { max-width: 40rem; }
 
 @media (prefers-reduced-motion: reduce) {
@@ -195,122 +231,121 @@ footer { padding: 3rem 0 4rem; color: var(--ink-3); font-size: 0.9rem; }
   <div class="masthead">
     <h1>Meaning Maker</h1>
     <nav class="ui" aria-label="Project links">
-      <a href="https://meaning-maker.alecflett.workers.dev/">Try it with your own text</a>
+      <a href="https://meaning-maker.alecflett.workers.dev/">Run it on your own text</a>
       <a href="https://github.com/alecf/meaning-maker">Source</a>
     </nav>
   </div>
-  <p class="dek">Some sentences move a piece of writing forward. Others say again what was just said. Meaning Maker measures the difference.</p>
+  <p class="dek">An experiment with embeddings: shade each sentence by how far it moves the text from what came just before.</p>
 
-  <div class="tabs ui" role="tablist" aria-label="Example text" id="tabs"></div>
-  <div class="reading" id="hero-text" aria-live="polite"></div>
-  <div class="legend-fade ui"><span>Restates what came just before</span><span class="bar" aria-hidden="true"></span><span>Says something new</span></div>
-  <p class="source" id="hero-source"></p>
+  <figure class="specimen" aria-labelledby="ex-label">
+    <div class="specimen-head">
+      <h2 class="specimen-title" id="ex-label">Examples</h2>
+      <div class="tabs ui" role="tablist" aria-label="Example text" id="tabs"></div>
+    </div>
+    <div class="sheet"><div class="reading" id="hero-text" aria-live="polite"></div></div>
+    <div class="specimen-foot ui">
+      <div class="legend-fade"><span>Repeats</span><span class="bar" aria-hidden="true"></span><span>New</span></div>
+      <p id="hero-source"></p>
+    </div>
+  </figure>
 </header>
 
 <main class="wrap">
   <section aria-labelledby="h-vectors">
     <div class="prose">
-      <h2 id="h-vectors">A sentence becomes a point in space</h2>
-      <p>An embedding model reads a piece of text and returns a long list of numbers, here 1,024 of them. Each list is a position in a space where texts that mean similar things sit close together, even when they share few words.</p>
-      <p>Below, each stripe is one sentence's embedding, one thin bar per number. The first two sentences say nearly the same thing in different words, and their stripes are almost identical. The third is about something else entirely.</p>
+      <h2 id="h-vectors">Sentences as directions</h2>
+      <p>An embedding model turns text into a list of numbers, 1,024 here. Read the list as an arrow and texts that mean similar things point in similar directions, even when the words differ. The score used everywhere below is cosine similarity: 1 when two arrows point the same way, lower as they spread apart.</p>
     </div>
-    <figure class="panel" id="vectors"></figure>
-    <div class="prose">
-      <p>To compare two embeddings, Meaning Maker uses <em>cosine similarity</em>: the angle between the two lists, treated as arrows from the origin. Pointing the same way scores 1, and less related texts score lower. With this model even unrelated sentences stay well above zero (0.37 for the cat and the quarks), so the differences that matter are all in the upper part of the scale.</p>
-    </div>
+    <figure class="panel">
+      <div class="vec-layout">
+        <div id="vectors"></div>
+        <svg id="arrows" viewBox="0 0 280 230" role="img" aria-labelledby="arrows-title"><title id="arrows-title">Sketch: A and B point almost the same way; C points somewhere else</title></svg>
+      </div>
+      <figcaption>Left: the real embeddings, one thin bar per number. Right: a 2-D sketch with angles taken from the real scores. With this model even unrelated sentences score around 0.4.</figcaption>
+    </figure>
   </section>
 
   <section aria-labelledby="h-window">
     <div class="prose">
-      <h2 id="h-window">Comparing each moment to the one before</h2>
-      <p>A single sentence is a small, noisy sample of meaning. A short sentence like "There is nothing surprising in this" barely means anything on its own. So rather than embed sentences one at a time, Meaning Maker embeds a <em>window</em>: the current sentence together with the few before it.</p>
-      <p>Each step, the window slides forward by one sentence. One sentence joins, the oldest one leaves, and the rest stay put. The new window's embedding is compared with the previous window's. If the sentence that joined carried the text somewhere new, the two windows point in different directions and the similarity drops.</p>
-      <p>Step through the text below, and try different window sizes.</p>
+      <h2 id="h-window">A sliding window</h2>
+      <p>One sentence is a noisy sample, so each step embeds a window: the scored sentence plus a few before it. That window is compared with the previous step's window. A low score means the new sentence pulled the text somewhere else.</p>
+      <p>Bigger windows smooth out sentence-to-sentence noise, so only real changes of subject stand out, like the jump to Darwin at a window of 8. Windows restart at each paragraph. The shading in the examples above is this score, rescaled within each text.</p>
     </div>
 
-    <figure class="panel" id="stepper">
-      <div class="controls ui">
-        <fieldset class="seg" id="wsizes"><legend class="lbl">Window</legend></fieldset>
-        <div class="stepper-nav">
-          <button type="button" class="stepbtn" id="prev" aria-label="Previous sentence">Back</button>
+    <div class="lab">
+      <div class="dock ui" id="dock">
+        <select id="ex-select" aria-label="Example text"></select>
+          <div class="transport">
+          <button type="button" class="icon-btn" id="prev" aria-label="Previous sentence"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.6 2.4 5 8l5.6 5.6 1.4-1.4L7.8 8 12 3.8z"/></svg></button>
+          <button type="button" class="icon-btn play" id="play" aria-label="Play"></button>
+          <button type="button" class="icon-btn" id="next" aria-label="Next sentence"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5.4 2.4 11 8l-5.6 5.6L4 12.2 8.2 8 4 3.8z"/></svg></button>
           <input type="range" id="step" min="1" value="1" aria-label="Sentence">
-          <button type="button" class="stepbtn" id="next" aria-label="Next sentence">Forward</button>
         </div>
+        <fieldset class="seg" id="wsizes"><legend>Window</legend></fieldset>
+        <p class="readout" id="readout" aria-live="polite"></p>
       </div>
-      <div class="windowkey ui">
-        <span><span class="k-cur">Highlighted</span> current window</span>
-        <span><span class="k-prev">Underlined</span> previous window</span>
+
+      <figure class="panel" id="stepper">
+        <div class="windowkey ui">
+          <span><span class="sw in-cur">Current window</span></span>
+          <span><span class="sw is-new">Scored sentence</span></span>
+          <span><span class="sw in-prev">Previous window</span></span>
+        </div>
+        <div class="windowtext" id="windowtext"></div>
+      </figure>
+
+      <figure class="panel chart" id="linechart">
+        <svg id="line-svg" role="img" aria-labelledby="line-title"><title id="line-title">Score at each step</title></svg>
+        <figcaption>Score at each step. Blue is the selected window size, grey the others. Ticks mark paragraph breaks. Click a point to jump there.</figcaption>
+        <details><summary>Show the numbers</summary><div id="line-table"></div></details>
+      </figure>
+
+      <div class="two-up">
+        <figure class="panel chart" id="pathchart">
+          <svg id="path-svg" role="img" aria-labelledby="path-title"><title id="path-title">Path of the text's windows, projected to two dimensions</title></svg>
+          <figcaption>The path: each window as a point, squashed from 1,024 dimensions to 2, light to dark from start to end. Dashed segments cross a paragraph break. Ringed: the current step.</figcaption>
+        </figure>
+        <figure class="panel chart" id="matrixchart">
+          <svg id="matrix-svg" role="img" aria-labelledby="matrix-title"><title id="matrix-title">Similarity of every sentence to every other sentence</title></svg>
+          <figcaption>Every sentence against every other, no window. Stronger blue is more similar. Outlined: the current sentence.</figcaption>
+        </figure>
       </div>
-      <div class="readout" id="readout"></div>
-      <div class="windowtext" id="windowtext"></div>
-    </figure>
-
-    <figure class="panel chart" id="linechart">
-      <svg id="line-svg" role="img" aria-labelledby="line-title"><title id="line-title">Similarity to the previous window, sentence by sentence</title></svg>
-      <figcaption>Similarity between each window and the one before it. The blue line is the selected window size; grey lines are the other sizes. Ticks along the bottom mark new paragraphs, where the window starts over. Click a point to jump to it.</figcaption>
-      <details><summary>Show the numbers</summary><div id="line-table"></div></details>
-    </figure>
-
-    <div class="prose">
-      <p>The window size changes what counts as news. With a window of one, every sentence is compared only with the sentence before it, and the line jumps around: almost any two sentences differ. With bigger windows, consecutive windows share most of their text, so similarity runs high, and only a sentence that really changes the subject can pull it down. In the Moby-Dick and Darwin example, the switch from Ishmael's restlessness to the voyage of the Beagle stands out clearly at a window of eight, where a window of one hides it among ordinary sentence-to-sentence variation.</p>
-      <p>Windows start over at each paragraph. The first sentence of a paragraph is compared with the whole last window of the paragraph before, which is why paragraph openings often register as new.</p>
-    </div>
-  </section>
-
-  <section aria-labelledby="h-path">
-    <div class="prose">
-      <h2 id="h-path">The path a text takes</h2>
-      <p>If each window is a point, a whole text is a path through the space. The space has 1,024 dimensions, so the picture below flattens it to the two directions along which this text's windows vary the most. Distances get distorted in the squash, but the shape survives: long jumps are changes of subject, tight clusters are stretches that keep circling the same idea.</p>
-    </div>
-    <div class="two-up">
-      <figure class="panel chart" id="pathchart">
-        <svg id="path-svg" role="img" aria-labelledby="path-title"><title id="path-title">Path of the text's windows, projected to two dimensions</title></svg>
-        <figcaption>Each dot is one window, from light (start) to dark (end). Dashed segments cross a paragraph break. The ringed dot is the current step.</figcaption>
-      </figure>
-      <figure class="panel chart" id="matrixchart">
-        <svg id="matrix-svg" role="img" aria-labelledby="matrix-title"><title id="matrix-title">Similarity of every sentence to every other sentence</title></svg>
-        <figcaption>Every sentence compared with every other, one sentence at a time (no window). Darker squares are more similar. Blocks along the diagonal are runs of sentences about the same thing.</figcaption>
-      </figure>
-    </div>
-  </section>
-
-  <section aria-labelledby="h-shade">
-    <div class="prose">
-      <h2 id="h-shade">From numbers to ink</h2>
-      <p>The shading at the top of this page is the last step. Each sentence gets the similarity between its window and the one before. The least similar sentences in the text are drawn in full ink, the most similar fade toward the paper, and everything else falls in between. The first sentence has nothing to compare with, so it is always drawn in full.</p>
-      <p>The scale is relative to each text, which keeps the result readable whatever the subject. A text that is repetitive throughout will still show its least repetitive sentences in full ink.</p>
-      <p><a href="https://meaning-maker.alecflett.workers.dev/">Try it on your own writing.</a></p>
     </div>
   </section>
 </main>
 
 <footer class="wrap ui">
-  <p class="credits" id="credits">Embeddings from <span id="model"></span> on Cloudflare Workers AI. Texts are public domain, via Project Gutenberg. <a href="https://github.com/alecf/meaning-maker">Source on GitHub</a>.</p>
+  <p class="credits">Embeddings from <span id="model"></span> on Cloudflare Workers AI. Texts are public domain, via Project Gutenberg. <a href="https://github.com/alecf/meaning-maker">Source on GitHub</a>.</p>
 </footer>
 
 <script>
 (() => {
   const state = { ex: 0, w: 8, step: 1 };
   let data = null;
+  let timer = null;
   const $ = (id) => document.getElementById(id);
   const NS = "http://www.w3.org/2000/svg";
   const tip = $("tip");
+  const reduceMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const ICON_PLAY = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 2.5v11l9-5.5z"/></svg>';
+  const ICON_PAUSE = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 2.5h3v11h-3zM9.5 2.5h3v11h-3z"/></svg>';
 
   const el = (tag, attrs = {}, parent) => {
     const node = tag.startsWith("svg:") ? document.createElementNS(NS, tag.slice(4)) : document.createElement(tag);
     for (const [k, v] of Object.entries(attrs)) {
       if (k === "text") node.textContent = v;
-      else if (k === "class") node.setAttribute("class", v);
       else node.setAttribute(k, v);
     }
     if (parent) parent.appendChild(node);
     return node;
   };
+  const clearSvg = (svg) => { for (const c of [...svg.childNodes]) if (c.nodeName !== "title") c.remove(); };
   const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   const fmt = (x) => x.toFixed(2);
   const clip = (s, n = 90) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s);
   const ex = () => data.examples[state.ex];
   const sims = () => ex().similarity[state.w];
+  const lastStep = () => ex().sentences.length - 1;
 
   function showTip(evt, html) {
     tip.innerHTML = html;
@@ -343,18 +378,27 @@ footer { padding: 3rem 0 4rem; color: var(--ink-3); font-size: 0.9rem; }
     return out.filter(Boolean);
   }
 
-  // ---------- Hero: shaded text ----------
+  // ---------- Examples ----------
   function renderTabs() {
     const tabs = $("tabs");
     tabs.innerHTML = "";
     data.examples.forEach((e, i) => {
       const b = el("button", { type: "button", role: "tab", "aria-selected": String(i === state.ex), text: e.title }, tabs);
-      b.addEventListener("click", () => {
-        state.ex = i;
-        state.step = Math.min(state.step, ex().sentences.length - 1);
-        renderAll();
-      });
+      b.addEventListener("click", () => selectExample(i));
     });
+    const sel = $("ex-select");
+    sel.innerHTML = "";
+    data.examples.forEach((e, i) => { el("option", { value: String(i), text: e.title }, sel); });
+    sel.value = String(state.ex);
+  }
+
+  function selectExample(i) {
+    stop();
+    state.ex = i;
+    state.step = 1;
+    $("hero-text").parentElement.scrollTop = 0;
+    $("windowtext").scrollTop = 0;
+    renderAll();
   }
 
   function opacities() {
@@ -375,7 +419,7 @@ footer { padding: 3rem 0 4rem; color: var(--ink-3); font-size: 0.9rem; }
       para.forEach((i, k) => {
         const span = el("span", { class: "sent", tabindex: "0", text: ex().sentences[i].text }, p);
         span.style.setProperty("--o", o[i].toFixed(3));
-        const label = i === 0 ? "First sentence: nothing to compare with yet." : `Similarity to the previous window: <b>${fmt(s[i])}</b>`;
+        const label = i === 0 ? "First sentence: nothing to compare with yet." : `Score: <b>${fmt(s[i])}</b>`;
         span.addEventListener("mousemove", (e) => showTip(e, label));
         span.addEventListener("mouseleave", hideTip);
         span.addEventListener("focus", () => {
@@ -386,33 +430,80 @@ footer { padding: 3rem 0 4rem; color: var(--ink-3); font-size: 0.9rem; }
         if (k < para.length - 1) p.appendChild(document.createTextNode(" "));
       });
     }
-    $("hero-source").textContent = `${ex().source}. Window of ${state.w} sentence${state.w > 1 ? "s" : ""}.`;
+    $("hero-source").textContent = `${ex().source}. Window of ${state.w}.`;
   }
 
-  // ---------- Vector barcodes ----------
+  // ---------- Vectors ----------
+  const TAGS = ["A", "B", "C"];
+
   function renderVectors() {
-    const fig = $("vectors");
-    fig.innerHTML = "";
-    const { sentences, vectors, similarity } = data.vectorDemo;
+    const box = $("vectors");
+    box.innerHTML = "";
+    const { sentences, vectors } = data.vectorDemo;
     const maxAbs = Math.max(...vectors.flat().map(Math.abs));
     const neutral = css("--panel");
     const pos = css("--accent");
     const neg = css("--warm");
     sentences.forEach((s, r) => {
-      const row = el("div", { class: "vec-row" }, fig);
+      const row = el("div", { class: "vec-row" }, box);
+      el("span", { class: "tag", text: TAGS[r] }, row);
       el("div", { class: "label", text: `“${s}”` }, row);
-      const svg = el("svg:svg", { viewBox: `0 0 ${vectors[r].length} 44`, preserveAspectRatio: "none", role: "img", "aria-label": `Embedding of: ${s}` }, row);
+      const svg = el("svg:svg", { viewBox: `0 0 ${vectors[r].length} 30`, preserveAspectRatio: "none", role: "img", "aria-label": `Embedding of: ${s}` }, row);
       vectors[r].forEach((v, i) => {
         const t = Math.min(1, Math.abs(v) / (maxAbs * 0.6));
-        el("svg:rect", { x: i, y: 0, width: 1.05, height: 44, fill: mix(neutral, v >= 0 ? pos : neg, t) }, svg);
+        el("svg:rect", { x: i, y: 0, width: 1.05, height: 30, fill: mix(neutral, v >= 0 ? pos : neg, t) }, svg);
       });
     });
-    const key = el("div", { class: "key ui" }, fig);
-    el("span", { text: "Positive value" }, key).style.setProperty("--sw", pos);
-    el("span", { text: "Negative value" }, key).style.setProperty("--sw", neg);
+    const key = el("div", { class: "key ui" }, box);
+    el("span", { text: "Positive" }, key).style.setProperty("--sw", pos);
+    el("span", { text: "Negative" }, key).style.setProperty("--sw", neg);
     el("span", { text: "Near zero" }, key).style.setProperty("--sw", css("--rule"));
-    const pairs = el("div", { class: "pairs ui" }, fig);
-    pairs.innerHTML = `<span>First and second: <b>${fmt(similarity[0][1])}</b></span><span>First and third: <b>${fmt(similarity[0][2])}</b></span><span>Second and third: <b>${fmt(similarity[1][2])}</b></span>`;
+    renderArrows();
+  }
+
+  /** A 2-D sketch: unit arrows whose angles come from the real cosine scores. */
+  function renderArrows() {
+    const svg = $("arrows");
+    clearSvg(svg);
+    const sim = data.vectorDemo.similarity;
+    const deg = Math.PI / 180;
+    const aAB = Math.acos(sim[0][1]);
+    const aC = Math.acos((sim[0][2] + sim[1][2]) / 2);
+    const thA = 112 * deg;
+    const thB = thA - aAB;
+    const thC = (thA + thB) / 2 - aC;
+    const O = [120, 205];
+    const R = 165;
+    const pt = (th, r) => [O[0] + r * Math.cos(th), O[1] - r * Math.sin(th)];
+    const ink = css("--ink");
+
+    el("svg:line", { class: "axis", x1: 10, y1: O[1], x2: 275, y2: O[1] }, svg);
+    const arc = (t1, t2, r) => {
+      const [x1, y1] = pt(t1, r);
+      const [x2, y2] = pt(t2, r);
+      el("svg:path", { class: "arc", d: `M${x1},${y1} A${r},${r} 0 0 1 ${x2},${y2}` }, svg);
+    };
+    arc(thB, thC, 62);
+    const [lx, ly] = pt((thB + thC) / 2, 80);
+    el("svg:text", { class: "score", x: lx, y: ly + 4, "text-anchor": "middle", text: fmt((sim[0][2] + sim[1][2]) / 2) }, svg);
+
+    const arrow = (th, tag, labelSide) => {
+      const [x, y] = pt(th, R);
+      el("svg:line", { x1: O[0], y1: O[1], x2: x, y2: y, stroke: ink, "stroke-width": 2, "stroke-linecap": "round" }, svg);
+      const h = 10, w = 5;
+      const ux = Math.cos(th), uy = -Math.sin(th);
+      const bx = x - ux * h, by = y - uy * h;
+      el("svg:polygon", { points: `${x},${y} ${bx - uy * w},${by + ux * w} ${bx + uy * w},${by - ux * w}`, fill: ink }, svg);
+      const [tx, ty] = pt(th, R + 16);
+      const g = el("svg:g", { transform: `translate(${tx + labelSide * 8},${ty})` }, svg);
+      el("svg:circle", { r: 10, fill: ink }, g);
+      el("svg:text", { y: 4, "text-anchor": "middle", fill: css("--paper"), style: `fill:${css("--paper")};font-weight:600`, text: tag }, g);
+    };
+    arrow(thA, "A", -1);
+    arrow(thB, "B", 1);
+    arrow(thC, "C", 0);
+    const [sx, sy] = pt(thB + aAB / 2, R + 44);
+    el("svg:text", { class: "score", x: sx, y: sy, "text-anchor": "middle", text: fmt(sim[0][1]) }, svg);
   }
 
   // ---------- Window stepper ----------
@@ -425,9 +516,7 @@ footer { padding: 3rem 0 4rem; color: var(--ink-3); font-size: 0.9rem; }
     }
   }
 
-  function windowRange(i) {
-    return [ex().windowStart[state.w][i], i];
-  }
+  const windowRange = (i) => [ex().windowStart[state.w][i], i];
 
   function renderStepper() {
     const n = ex().sentences.length;
@@ -439,45 +528,73 @@ footer { padding: 3rem 0 4rem; color: var(--ink-3); font-size: 0.9rem; }
 
     const [cs, ce] = windowRange(state.step);
     const [ps, pe] = windowRange(state.step - 1);
+    const s = sims()[state.step];
     const box = $("windowtext");
     box.innerHTML = "";
+    let cur = null;
     for (const para of paragraphs(ex().sentences)) {
       const p = el("p", {}, box);
       para.forEach((i, k) => {
         const classes = ["sent"];
         if (i >= cs && i <= ce) classes.push("in-cur");
         if (i >= ps && i <= pe) classes.push("in-prev");
-        if (i === state.step) classes.push("is-new");
-        el("span", { class: classes.join(" "), text: ex().sentences[i].text }, p);
+        if (i === state.step) {
+          classes.push("is-new");
+          const anchor = el("span", { class: "score-anchor" }, p);
+          el("span", { class: "score-badge", text: fmt(s) }, anchor);
+        }
+        const span = el("span", { class: classes.join(" "), text: ex().sentences[i].text }, p);
+        if (i === state.step) cur = span;
         if (k < para.length - 1) p.appendChild(document.createTextNode(" "));
       });
     }
-    const s = sims()[state.step];
+    if (cur) {
+      const top = cur.offsetTop;
+      if (top < box.scrollTop + 24 || top > box.scrollTop + box.clientHeight - 48) {
+        box.scrollTo({ top: Math.max(0, top - box.clientHeight / 3), behavior: reduceMotion() ? "auto" : "smooth" });
+      }
+    }
     const all = sims().slice(1);
     const rank = all.filter((v) => v < s).length;
-    const note = rank === 0 ? "The biggest change of direction in this text." : rank === all.length - 1 ? "The least change anywhere in this text." : `${rank} of ${all.length} steps changed direction more.`;
-    $("readout").innerHTML = `<span>Sentence ${state.step + 1} of ${n}.</span><span>Similarity to the previous window</span><span class="num">${fmt(s)}</span><span>${note}</span>`;
-    const cur = box.querySelector(".is-new");
-    if (cur && document.activeElement && ["step", "prev", "next"].includes(document.activeElement.id)) {
-      cur.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
-    }
+    const note = rank === 0 ? "Lowest in this text." : rank === all.length - 1 ? "Highest in this text." : `${rank} of ${all.length} steps lower.`;
+    $("readout").innerHTML = `Sentence ${state.step + 1} of ${n}: <b>${fmt(s)}</b>. ${note}`;
   }
 
   function setStep(i) {
-    const n = ex().sentences.length;
-    state.step = Math.max(1, Math.min(n - 1, i));
+    state.step = Math.max(1, Math.min(lastStep(), i));
     renderStepper();
     renderLine();
     renderPath();
     renderMatrix();
   }
+  const userStep = (i) => { stop(); setStep(i); };
+
+  // ---------- Playback ----------
+  function renderPlay() {
+    const b = $("play");
+    b.innerHTML = timer ? ICON_PAUSE : ICON_PLAY;
+    b.setAttribute("aria-label", timer ? "Pause" : "Play");
+  }
+  function stop() {
+    if (timer) clearInterval(timer);
+    timer = null;
+    renderPlay();
+  }
+  function play() {
+    if (state.step >= lastStep()) setStep(1);
+    timer = setInterval(() => {
+      if (state.step >= lastStep()) stop();
+      else setStep(state.step + 1);
+    }, 1100);
+    renderPlay();
+  }
 
   // ---------- Line chart ----------
   function renderLine() {
     const svg = $("line-svg");
-    const W = 900, H = 300, m = { t: 16, r: 16, b: 34, l: 44 };
+    const W = 900, H = 220, m = { t: 16, r: 16, b: 34, l: 44 };
     svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
-    [...svg.childNodes].forEach((c) => { if (c.nodeName !== "title") c.remove(); });
+    clearSvg(svg);
     const e = ex();
     const n = e.sentences.length;
     const allVals = data.windowSizes.flatMap((w) => e.similarity[w].slice(1));
@@ -497,7 +614,6 @@ footer { padding: 3rem 0 4rem; color: var(--ink-3); font-size: 0.9rem; }
         el("svg:text", { x: x(i), y: H - 8, "text-anchor": "middle", text: String(i + 1) }, svg);
       }
     });
-    el("svg:text", { x: W - m.r, y: H - 8, "text-anchor": "end", text: "" }, svg);
 
     const line = (vals) => vals.slice(1).map((v, k) => `${k ? "L" : "M"}${x(k + 1).toFixed(1)},${y(v).toFixed(1)}`).join("");
     for (const w of data.windowSizes) {
@@ -509,7 +625,6 @@ footer { padding: 3rem 0 4rem; color: var(--ink-3); font-size: 0.9rem; }
       if (i === 0) return;
       el("svg:circle", { class: i === state.step ? "dot cur" : "dot", cx: x(i), cy: y(v), r: i === state.step ? 6 : 4 }, svg);
     });
-    // Hit targets wider than the marks.
     const colW = (W - m.l - m.r) / Math.max(1, n - 2);
     sims().forEach((v, i) => {
       if (i === 0) return;
@@ -517,7 +632,7 @@ footer { padding: 3rem 0 4rem; color: var(--ink-3); font-size: 0.9rem; }
       const html = `<b>Sentence ${i + 1}: ${fmt(v)}</b><br>${escapeHtml(clip(e.sentences[i].text))}`;
       r.addEventListener("mousemove", (evt) => showTip(evt, html));
       r.addEventListener("mouseleave", hideTip);
-      r.addEventListener("click", () => setStep(i));
+      r.addEventListener("click", () => userStep(i));
     });
 
     const rows = e.sentences.map((s, i) => `<tr><td class="n">${i + 1}</td><td>${escapeHtml(clip(s.text, 70))}</td>${data.windowSizes.map((w) => `<td class="n">${i === 0 ? "–" : fmt(e.similarity[w][i])}</td>`).join("")}</tr>`).join("");
@@ -529,7 +644,7 @@ footer { padding: 3rem 0 4rem; color: var(--ink-3); font-size: 0.9rem; }
     const svg = $("path-svg");
     const S = 420, pad = 28;
     svg.setAttribute("viewBox", `0 0 ${S} ${S}`);
-    [...svg.childNodes].forEach((c) => { if (c.nodeName !== "title") c.remove(); });
+    clearSvg(svg);
     const e = ex();
     const pts = e.path[state.w];
     const xs = pts.map((p) => p[0]);
@@ -548,14 +663,13 @@ footer { padding: 3rem 0 4rem; color: var(--ink-3); font-size: 0.9rem; }
       el("svg:line", { x1: px(pts[i - 1]), y1: py(pts[i - 1]), x2: px(pts[i]), y2: py(pts[i]), stroke: col(i), "stroke-width": 2, "stroke-dasharray": crosses ? "4 4" : "none", "stroke-linecap": "round" }, svg);
     }
     pts.forEach((p, i) => {
-      const isCur = i === state.step;
-      if (isCur) el("svg:circle", { cx: px(p), cy: py(p), r: 11, fill: "none", stroke: css("--ink"), "stroke-width": 2 }, svg);
+      if (i === state.step) el("svg:circle", { cx: px(p), cy: py(p), r: 11, fill: "none", stroke: css("--ink"), "stroke-width": 2 }, svg);
       el("svg:circle", { cx: px(p), cy: py(p), r: 5.5, fill: col(i), stroke: css("--panel"), "stroke-width": 2 }, svg);
       const hit = el("svg:circle", { class: "hit", cx: px(p), cy: py(p), r: 14 }, svg);
       const html = `<b>Window ending at sentence ${i + 1}</b><br>${escapeHtml(clip(e.sentences[i].text))}`;
       hit.addEventListener("mousemove", (evt) => showTip(evt, html));
       hit.addEventListener("mouseleave", hideTip);
-      hit.addEventListener("click", () => setStep(i));
+      hit.addEventListener("click", () => userStep(i));
     });
     const lab = (i, text) => el("svg:text", { x: px(pts[i]) + 10, y: py(pts[i]) - 10, text }, svg);
     lab(0, "start");
@@ -567,7 +681,7 @@ footer { padding: 3rem 0 4rem; color: var(--ink-3); font-size: 0.9rem; }
     const svg = $("matrix-svg");
     const S = 420, pad = 4;
     svg.setAttribute("viewBox", `0 0 ${S} ${S}`);
-    [...svg.childNodes].forEach((c) => { if (c.nodeName !== "title") c.remove(); });
+    clearSvg(svg);
     const e = ex();
     const M = e.matrix;
     const n = M.length;
@@ -585,7 +699,7 @@ footer { padding: 3rem 0 4rem; color: var(--ink-3); font-size: 0.9rem; }
           : `<b>${fmt(v)}</b> between sentences ${i + 1} and ${j + 1}<br>${escapeHtml(clip(e.sentences[i].text, 60))}<br>${escapeHtml(clip(e.sentences[j].text, 60))}`;
         r.addEventListener("mousemove", (evt) => showTip(evt, html));
         r.addEventListener("mouseleave", hideTip);
-        r.addEventListener("click", () => setStep(Math.max(i, j, 1)));
+        r.addEventListener("click", () => userStep(Math.max(i, j, 1)));
       }
     }
     const k = state.step;
@@ -604,10 +718,13 @@ footer { padding: 3rem 0 4rem; color: var(--ink-3); font-size: 0.9rem; }
   }
 
   function wire() {
-    $("step").addEventListener("input", (e) => setStep(Number(e.target.value)));
-    $("prev").addEventListener("click", () => setStep(state.step - 1));
-    $("next").addEventListener("click", () => setStep(state.step + 1));
+    $("step").addEventListener("input", (e) => userStep(Number(e.target.value)));
+    $("prev").addEventListener("click", () => userStep(state.step - 1));
+    $("next").addEventListener("click", () => userStep(state.step + 1));
+    $("ex-select").addEventListener("change", (e) => selectExample(Number(e.target.value)));
+    $("play").addEventListener("click", () => (timer ? stop() : play()));
     matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { renderVectors(); renderAll(); });
+    renderPlay();
   }
 
   fetch("data.json")
