@@ -148,6 +148,10 @@ async function main() {
       let sentences: { text: string; paragraph: number }[] = [];
       // Window membership per sentence: index of the first sentence in its window.
       const windowStart: Record<number, number[]> = {};
+      // Window-vs-window similarity: matrix[size][i][j] compares the window
+      // ending at sentence i with the one ending at sentence j. The app's score
+      // for sentence i is matrix[size][i][i - 1].
+      const matrix: Record<number, number[][]> = {};
 
       for (const size of WINDOW_SIZES) {
         const result = await getAllSentences(
@@ -184,15 +188,10 @@ async function main() {
         }
         path[size] = pca2(windowVectors);
         windowStart[size] = starts;
+        matrix[size] = windowVectors.map((a) =>
+          windowVectors.map((b) => round(cosine(a, b), 3)),
+        );
       }
-
-      // Sentence-by-sentence similarity, from the window-size-1 vectors.
-      const single = sentences.map((s) => {
-        const v = seen.get(s.text);
-        if (!v) throw new Error(`no vector for sentence: ${s.text}`);
-        return v;
-      });
-      const matrix = single.map((a) => single.map((b) => round(cosine(a, b), 3)));
 
       examples.push({
         id: ex.id,

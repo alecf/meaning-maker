@@ -120,6 +120,7 @@ header.hero { padding: 2.5rem 0 0.5rem; }
 /* ---------- Figures ---------- */
 figure { margin: 1.5rem 0 1rem; }
 .lab figure { margin: 1rem 0; }
+.after { margin-top: 0.5rem; }
 figcaption { font-size: 0.88rem; color: var(--ink-2); margin-top: 0.6rem; max-width: 40rem; line-height: 1.5; }
 .panel { background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 1.25rem; }
 svg text { font-family: "Schibsted Grotesk", system-ui, sans-serif; fill: var(--ink-3); font-size: 12px; }
@@ -306,10 +307,11 @@ footer { padding: 2.5rem 0 4rem; color: var(--ink-3); font-size: 0.88rem; }
           <figcaption>The path: each window as a point, squashed from 1,024 dimensions to 2, light to dark from start to end. Dashed segments cross a paragraph break. Ringed: the current step.</figcaption>
         </figure>
         <figure class="panel chart" id="matrixchart">
-          <svg id="matrix-svg" role="img" aria-labelledby="matrix-title"><title id="matrix-title">Similarity of every sentence to every other sentence</title></svg>
-          <figcaption>Every sentence against every other, no window. Stronger blue is more similar. Outlined: the current sentence.</figcaption>
+          <svg id="matrix-svg" role="img" aria-labelledby="matrix-title"><title id="matrix-title">Similarity of every window to every other window</title></svg>
+          <figcaption>Every window against every other, at the selected size. Stronger blue is more similar. Dots mark the only cells the score uses, each window against the one before it. Outlined: the current window’s row, with its score ringed. Gaps are paragraph breaks.</figcaption>
         </figure>
       </div>
+      <p class="prose after">Try Moby-Dick then Darwin at a window of 1, then 8. At 1 the grid is noise. At 8 the two books split into two blocks, and the step from one to the other is the dot that lands in the dark gap between them.</p>
     </div>
   </section>
 </main>
@@ -683,28 +685,39 @@ footer { padding: 2.5rem 0 4rem; color: var(--ink-3); font-size: 0.88rem; }
     svg.setAttribute("viewBox", `0 0 ${S} ${S}`);
     clearSvg(svg);
     const e = ex();
-    const M = e.matrix;
+    const M = e.matrix[state.w];
     const n = M.length;
     const off = M.flatMap((row, i) => row.filter((_, j) => j !== i));
     const lo = Math.min(...off), hi = Math.max(...off);
     const cell = (S - 2 * pad) / n;
     const a = css("--ramp-lo"), b = css("--ramp-hi");
+    const at = (k) => pad + k * cell;
+    const k = state.step;
     for (let i = 0; i < n; i++) {
       for (let j = 0; j < n; j++) {
         const v = M[i][j];
-        const t = i === j ? 1 : (v - lo) / (hi - lo || 1);
-        const r = el("svg:rect", { x: pad + j * cell + 1, y: pad + i * cell + 1, width: cell - 2, height: cell - 2, rx: 2, fill: mix(a, b, t) }, svg);
-        const html = i === j
-          ? `<b>Sentence ${i + 1}</b><br>${escapeHtml(clip(e.sentences[i].text))}`
-          : `<b>${fmt(v)}</b> between sentences ${i + 1} and ${j + 1}<br>${escapeHtml(clip(e.sentences[i].text, 60))}<br>${escapeHtml(clip(e.sentences[j].text, 60))}`;
+        const self = i === j;
+        const r = el("svg:rect", { x: at(j) + 1, y: at(i) + 1, width: cell - 2, height: cell - 2, rx: 2, fill: self ? css("--rule") : mix(a, b, (v - lo) / (hi - lo || 1)) }, svg);
+        if (j === i - 1) el("svg:circle", { cx: at(j) + cell / 2, cy: at(i) + cell / 2, r: 2.75, fill: css("--ink-2"), stroke: css("--panel"), "stroke-width": 1, "pointer-events": "none" }, svg);
+        const scoreNote = j === i - 1 ? `<br>This is sentence ${i + 1}’s score.` : "";
+        const html = self
+          ? `<b>Window ending at sentence ${i + 1}</b><br>${escapeHtml(clip(e.sentences[i].text))}`
+          : `<b>${fmt(v)}</b>: window ending at sentence ${i + 1} vs. window ending at ${j + 1}${scoreNote}`;
         r.addEventListener("mousemove", (evt) => showTip(evt, html));
         r.addEventListener("mouseleave", hideTip);
         r.addEventListener("click", () => userStep(Math.max(i, j, 1)));
       }
     }
-    const k = state.step;
-    el("svg:rect", { x: pad + k * cell, y: pad, width: cell, height: S - 2 * pad, fill: "none", stroke: css("--ink"), "stroke-width": 1.5, rx: 3 }, svg);
-    el("svg:rect", { x: pad, y: pad + k * cell, width: S - 2 * pad, height: cell, fill: "none", stroke: css("--ink"), "stroke-width": 1.5, rx: 3 }, svg);
+    // Paragraph breaks.
+    e.sentences.forEach((s, i) => {
+      if (i > 0 && s.paragraph !== e.sentences[i - 1].paragraph) {
+        el("svg:line", { x1: at(i), x2: at(i), y1: pad, y2: S - pad, stroke: css("--panel"), "stroke-width": 4, "pointer-events": "none" }, svg);
+        el("svg:line", { x1: pad, x2: S - pad, y1: at(i), y2: at(i), stroke: css("--panel"), "stroke-width": 4, "pointer-events": "none" }, svg);
+      }
+    });
+    // The current window's row, and the one cell in it that is its score.
+    el("svg:rect", { x: pad, y: at(k), width: S - 2 * pad, height: cell, fill: "none", stroke: css("--ink-3"), "stroke-width": 1, rx: 3, "pointer-events": "none" }, svg);
+    el("svg:rect", { x: at(k - 1) - 1.5, y: at(k) - 1.5, width: cell + 3, height: cell + 3, fill: "none", stroke: css("--ink"), "stroke-width": 2.5, rx: 4, "pointer-events": "none" }, svg);
   }
 
   function renderAll() {
