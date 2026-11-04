@@ -28,11 +28,12 @@ updates:
       nextjs:
         patterns:
           - "next"
-      chakra-and-styling:
+      markdown:
         patterns:
-          - "@chakra-ui/*"
-          - "@emotion/*"
-          - "framer-motion"
+          - "unified"
+          - "remark-*"
+          - "rehype-*"
+          - "hast-*"
       typescript-and-linting:
         patterns:
           - "typescript"

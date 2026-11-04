@@ -6,23 +6,26 @@ For an interactive explanation of how it works, with real examples, see [alecf.c
 
 ## How it works
 
-Paste any text (up to 3,000 characters) and click **Submit**. Each sentence is rendered with an opacity proportional to how semantically novel it is compared to the preceding context — faded sentences are repeating ideas already covered, bright sentences are introducing new information.
+Paste any text (up to 3,000 characters) and click **Analyze text**. Each sentence is rendered with an opacity proportional to how semantically novel it is compared to the preceding context — faded sentences are repeating ideas already covered, solid sentences are introducing new information.
+
+Markdown is detected automatically and rendered with its formatting, and the shading follows sentences through bold text, links, lists and tables. Only the prose is embedded, so markup doesn't affect the scores. Code blocks and very short lines aren't scored.
 
 Under the hood:
 
-1. The text is split into sentences and paragraphs.
-2. Each sentence is embedded using a rolling window of the preceding N sentences (configurable via **Window size**, default 8), producing a single embedding that captures local context.
+1. The text is parsed, and its prose is split into sentences and paragraphs.
+2. Each sentence is embedded using a rolling window of the preceding N sentences (configurable via **Context**, default 8), producing a single embedding that captures local context.
 3. Cosine similarity is computed between each window's embedding and the previous one.
 4. Sentences with high similarity (low distance from prior context) are rendered at low opacity; sentences with low similarity (high distance) render at full opacity.
 5. Embeddings are cached in Workers KV to avoid redundant model calls.
 
-Hover over any sentence to see the raw similarity distance and the delta from the previous sentence.
+Hover over, tap or tab to any sentence to see its similarity score and the change from the previous sentence.
 
 ## Tech Stack
 
 - **Framework:** Next.js 16 (App Router)
 - **Language:** TypeScript (strict mode)
-- **UI:** Chakra UI + Emotion
+- **UI:** React with plain CSS (`src/app/globals.css`)
+- **Markdown:** unified (`remark-gfm`, `rehype-sanitize`, `hast-util-to-jsx-runtime`)
 - **Embeddings:** Workers AI `@cf/baai/bge-large-en-v1.5`, called through the [AI SDK](https://ai-sdk.dev/) and `workers-ai-provider`
 - **Cache:** Workers KV (`EMBED_CACHE` binding)
 - **Hosting:** Cloudflare Workers, via the [OpenNext Cloudflare adapter](https://opennext.js.org/cloudflare)
