@@ -308,7 +308,7 @@ footer { padding: 2.5rem 0 4rem; color: var(--ink-3); font-size: 0.88rem; }
         </figure>
         <figure class="panel chart" id="matrixchart">
           <svg id="matrix-svg" role="img" aria-labelledby="matrix-title"><title id="matrix-title">Similarity of every window to every other window</title></svg>
-          <figcaption>Every window against every other, at the selected size. Stronger blue is more similar. Dots mark the only cells the score uses, each window against the one before it. Outlined: the current window, across the sentences it covers, with its score ringed. Gaps are paragraph breaks, where windows start over.</figcaption>
+          <figcaption>Every window against every other, at the selected size. Stronger blue is more similar. Dots mark the only cells the score uses, each window against the one before it. Outlined: the current window, across the sentences it covers, with its score ringed. Lines mark paragraph breaks, where windows start over.</figcaption>
         </figure>
       </div>
       <p class="prose after">Try Moby-Dick then Darwin at a window of 1, then 8. At 1 the grid is noise. At 8 the two books split into two blocks, and the step from one to the other is the dot that lands in the dark gap between them.</p>
@@ -691,17 +691,9 @@ footer { padding: 2.5rem 0 4rem; color: var(--ink-3); font-size: 0.88rem; }
     const n = M.length;
     const off = M.flatMap((row, i) => row.filter((_, j) => j !== i));
     const lo = Math.min(...off), hi = Math.max(...off);
-    // Paragraph breaks are real gaps in the layout, so every cell is the same size.
-    const gap = 8;
-    const breaksBefore = [];
-    let breaks = 0;
-    e.sentences.forEach((s, i) => {
-      if (i > 0 && s.paragraph !== e.sentences[i - 1].paragraph) breaks++;
-      breaksBefore.push(breaks);
-    });
-    const cell = (S - 2 * pad - breaks * gap) / n;
+    const cell = (S - 2 * pad) / n;
     const a = css("--ramp-lo"), b = css("--ramp-hi");
-    const at = (k) => pad + k * cell + breaksBefore[k] * gap;
+    const at = (k) => pad + k * cell;
     const k = state.step;
     for (let i = 0; i < n; i++) {
       for (let j = 0; j < n; j++) {
@@ -718,6 +710,13 @@ footer { padding: 2.5rem 0 4rem; color: var(--ink-3); font-size: 0.88rem; }
         r.addEventListener("click", () => userStep(Math.max(i, j, 1)));
       }
     }
+    // Paragraph breaks: a thin line in the gutter between cells.
+    e.sentences.forEach((s, i) => {
+      if (i > 0 && s.paragraph !== e.sentences[i - 1].paragraph) {
+        el("svg:line", { x1: at(i), x2: at(i), y1: pad, y2: S - pad, stroke: css("--ink-3"), "stroke-width": 1.5, "pointer-events": "none" }, svg);
+        el("svg:line", { x1: pad, x2: S - pad, y1: at(i), y2: at(i), stroke: css("--ink-3"), "stroke-width": 1.5, "pointer-events": "none" }, svg);
+      }
+    });
     // The current window: its row, across the columns of the sentences it covers.
     const ws = e.windowStart[state.w][k];
     el("svg:rect", { x: at(ws), y: at(k), width: at(k) + cell - at(ws), height: cell, fill: "none", stroke: css("--ink-3"), "stroke-width": 1.5, rx: 3, "pointer-events": "none" }, svg);
