@@ -1,0 +1,766 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meaning Maker</title>
+<meta name="description" content="An experiment with text embeddings: shading each sentence by how far it moves a text from what came just before.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Schibsted+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #f2f4f1;
+  --panel: #fafbf9;
+  --well: #e4e8e3;
+  --ink: #18212e;
+  --ink-2: #485364;
+  --ink-3: #6d7787;
+  --rule: #d3d8d4;
+  --accent: #3a5cc4;
+  --warm: #c8601f;
+  --ramp-lo: #eef1f8;
+  --ramp-hi: #1b3a8f;
+  --ghost: #b9c0c9;
+  --focus: #3a5cc4;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #121821;
+    --panel: #18202b;
+    --well: #0d1219;
+    --ink: #e6eaf0;
+    --ink-2: #b0b9c7;
+    --ink-3: #8a94a4;
+    --rule: #2b3442;
+    --accent: #7690de;
+    --warm: #cc7640;
+    --ramp-lo: #1c2431;
+    --ramp-hi: #b3c4f6;
+    --ghost: #3e4858;
+    --focus: #9fb4f0;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #121821;
+  --panel: #18202b;
+  --well: #0d1219;
+  --ink: #e6eaf0;
+  --ink-2: #b0b9c7;
+  --ink-3: #8a94a4;
+  --rule: #2b3442;
+  --accent: #7690de;
+  --warm: #cc7640;
+  --ramp-lo: #1c2431;
+  --ramp-hi: #b3c4f6;
+  --ghost: #3e4858;
+  --focus: #9fb4f0;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Literata", Georgia, serif;
+  font-size: 1.125rem;
+  line-height: 1.65;
+  font-optical-sizing: auto;
+}
+.ui, button, input, select, figcaption, .readout, .tip, table {
+  font-family: "Schibsted Grotesk", system-ui, sans-serif;
+}
+a { color: var(--accent); text-underline-offset: 0.18em; }
+a:hover { text-decoration-thickness: 2px; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 3px; }
+
+.wrap { max-width: 64rem; margin: 0 auto; padding: 0 16px; }
+.prose { max-width: 38rem; }
+section { padding: 3rem 0 0.5rem; }
+h1, h2 { font-weight: 600; line-height: 1.15; letter-spacing: -0.01em; }
+h2 { font-size: 1.6rem; margin: 0 0 0.75rem; }
+p { margin: 0 0 1rem; }
+
+/* ---------- Header + example tray ---------- */
+header.hero { padding: 2.5rem 0 0.5rem; }
+.masthead { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.5rem 1.5rem; }
+.masthead h1 { font-size: 1.25rem; margin: 0; font-family: "Schibsted Grotesk", system-ui, sans-serif; font-weight: 600; letter-spacing: 0; }
+.masthead nav { display: flex; gap: 1.25rem; font-size: 0.95rem; }
+.dek { font-size: clamp(1.4rem, 3vw, 2rem); line-height: 1.25; max-width: 40rem; margin: 2rem 0 1.75rem; }
+
+.specimen { margin: 0; background: var(--well); border: 1px solid var(--rule); border-radius: 12px; padding: 0.75rem; }
+.specimen-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 1rem; padding: 0.15rem 0.35rem 0.7rem; }
+.specimen-title { font-family: "Schibsted Grotesk", system-ui, sans-serif; font-size: 0.95rem; font-weight: 600; color: var(--ink-2); margin: 0; letter-spacing: 0; }
+.sheet { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 1.25rem 1.5rem; max-height: 26rem; overflow-y: auto; }
+.specimen-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.25rem 1.5rem; padding: 0.7rem 0.35rem 0.1rem; font-size: 0.85rem; color: var(--ink-2); }
+.specimen-foot p { margin: 0; }
+
+.tabs { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.tabs button, .seg button {
+  appearance: none; border: 1px solid var(--rule); background: var(--panel); color: var(--ink-2);
+  padding: 0.3rem 0.75rem; border-radius: 999px; font-size: 0.85rem; cursor: pointer; line-height: 1.3;
+}
+.tabs button[aria-selected="true"], .seg button[aria-pressed="true"] {
+  background: var(--ink); color: var(--paper); border-color: var(--ink);
+}
+.tabs button:hover:not([aria-selected="true"]), .seg button:hover:not([aria-pressed="true"]) { border-color: var(--ink-3); color: var(--ink); }
+
+.reading { font-size: clamp(1.05rem, 1.8vw, 1.2rem); line-height: 1.65; max-width: 44rem; }
+.reading p { margin: 0 0 0.8em; }
+.reading p:last-child { margin-bottom: 0; }
+.sent { opacity: var(--o, 1); transition: opacity 400ms ease; cursor: default; border-radius: 3px; }
+.sent:hover, .sent:focus-visible { opacity: 1; background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.legend-fade { display: flex; align-items: center; gap: 0.5rem; }
+.legend-fade .bar { width: 6rem; height: 0.5rem; border-radius: 999px; background: linear-gradient(to right, color-mix(in srgb, var(--ink) 18%, transparent), var(--ink)); }
+
+/* ---------- Figures ---------- */
+figure { margin: 1.5rem 0 1rem; }
+.lab figure { margin: 1rem 0; }
+.after { margin-top: 0.5rem; }
+figcaption { font-size: 0.88rem; color: var(--ink-2); margin-top: 0.6rem; max-width: 40rem; line-height: 1.5; }
+.panel { background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 1.25rem; }
+svg text { font-family: "Schibsted Grotesk", system-ui, sans-serif; fill: var(--ink-3); font-size: 12px; }
+
+/* vectors: stripes + arrow sketch */
+.vec-layout { display: grid; grid-template-columns: minmax(0, 1fr) 17rem; gap: 1.5rem; align-items: center; }
+.vec-row { display: grid; grid-template-columns: 1.6rem minmax(0, 1fr); gap: 0.2rem 0.6rem; align-items: center; margin-bottom: 0.8rem; }
+.vec-row .label { font-size: 0.95rem; line-height: 1.35; }
+.vec-row svg { width: 100%; height: 30px; display: block; border-radius: 3px; }
+.tag { display: inline-grid; place-items: center; width: 1.5rem; height: 1.5rem; border-radius: 50%; background: var(--ink); color: var(--paper); font: 600 0.8rem/1 "Schibsted Grotesk", system-ui, sans-serif; }
+.vec-row .tag { grid-row: span 2; }
+.key { display: flex; gap: 1.25rem; flex-wrap: wrap; font-size: 0.82rem; color: var(--ink-2); margin-top: 0.25rem; }
+.key span::before { content: ""; display: inline-block; width: 0.75rem; height: 0.75rem; border-radius: 2px; margin-right: 0.35rem; vertical-align: -0.1rem; background: var(--sw); }
+#arrows { width: 100%; height: auto; display: block; overflow: visible; }
+#arrows .arc { fill: none; stroke: var(--ink-3); stroke-width: 1.25; }
+#arrows .axis { stroke: var(--rule); stroke-width: 1; }
+#arrows .score { fill: var(--ink); font-weight: 600; font-size: 13px; }
+
+/* stepper */
+.lab { margin-top: 1.5rem; }
+.dock {
+  position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1.25rem;
+  padding: 0.6rem 0.75rem; margin: 0 -0.75rem; background: color-mix(in srgb, var(--paper) 90%, transparent);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); border-bottom: 1px solid var(--rule);
+}
+.dock select {
+  font-size: 0.88rem; padding: 0.35rem 0.5rem; border-radius: 6px; border: 1px solid var(--rule);
+  background: var(--panel); color: var(--ink); max-width: 100%;
+}
+.seg { display: inline-flex; gap: 0.25rem; align-items: center; border: 0; margin: 0; padding: 0; min-width: 0; }
+.seg legend { float: left; padding: 0; font-size: 0.88rem; color: var(--ink-2); margin-right: 0.35rem; }
+.transport { display: inline-flex; align-items: center; gap: 0.4rem; }
+.transport input[type="range"] { width: min(12rem, 34vw); accent-color: var(--accent); margin: 0 0.25rem; }
+.icon-btn {
+  appearance: none; display: inline-grid; place-items: center; width: 2.25rem; height: 2.25rem; padding: 0;
+  border-radius: 50%; border: 1px solid var(--rule); background: var(--panel); color: var(--ink); cursor: pointer;
+}
+.icon-btn:hover:not(:disabled) { border-color: var(--ink-3); }
+.icon-btn:disabled { color: var(--ghost); cursor: default; }
+.icon-btn svg { width: 1rem; height: 1rem; fill: currentColor; }
+.icon-btn.play { width: 2.6rem; height: 2.6rem; background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+.windowkey { display: flex; flex-wrap: wrap; gap: 0.4rem 1.25rem; font-size: 0.85rem; color: var(--ink-2); margin: 0 0 0.75rem; }
+.windowkey .sw { padding: 0 0.3rem; border-radius: 2px; color: var(--ink); }
+.windowtext {
+  position: relative; font-size: 1rem; line-height: 2.3; max-height: 13.5rem; overflow-y: auto;
+  padding: 0.9rem 0.25rem 0.25rem; border-top: 1px solid var(--rule);
+}
+.windowtext p { margin: 0 0 0.5em; }
+.windowtext .sent { color: var(--ink-3); }
+.in-cur { color: var(--ink); background: color-mix(in srgb, var(--accent) 20%, transparent); box-decoration-break: clone; -webkit-box-decoration-break: clone; padding: 0.12em 0; }
+.windowtext .in-cur { color: var(--ink); }
+.in-prev { text-decoration: underline 2px var(--ink-3); text-underline-offset: 0.35em; text-decoration-skip-ink: none; }
+.windowtext .in-prev { color: var(--ink-2); }
+.windowtext .is-new, .windowkey .is-new { background: color-mix(in srgb, var(--accent) 40%, transparent); }
+.score-anchor { position: relative; display: inline-block; width: 0; height: 1em; }
+.score-badge {
+  position: absolute; left: 0; bottom: calc(100% + 0.05em); white-space: nowrap;
+  font: 600 0.72rem/1.35 "Schibsted Grotesk", system-ui, sans-serif;
+  background: var(--ink); color: var(--paper); padding: 0.05rem 0.4rem; border-radius: 4px;
+}
+.readout { font-size: 0.88rem; color: var(--ink-2); margin: 0 0 0 auto; }
+.readout b { color: var(--ink); font-weight: 600; }
+
+.chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.grid-line { stroke: var(--rule); stroke-width: 1; }
+.series-ghost { fill: none; stroke: var(--ghost); stroke-width: 1.5; }
+.series-main { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
+.dot { fill: var(--accent); stroke: var(--panel); stroke-width: 2; }
+.dot.cur { fill: var(--ink); }
+.cursor { stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 3 3; }
+.para-tick { stroke: var(--ink-3); stroke-width: 1; }
+.hit { fill: transparent; cursor: pointer; }
+
+.two-up { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+@media (max-width: 760px) {
+  .two-up, .vec-layout { grid-template-columns: 1fr; }
+  #arrows { max-width: 18rem; margin: 0 auto; }
+  .sheet { padding: 1rem; }
+}
+
+details { margin-top: 0.75rem; font-size: 0.88rem; }
+#line-table { overflow-x: auto; }
+summary { cursor: pointer; color: var(--ink-2); font-family: "Schibsted Grotesk", system-ui, sans-serif; }
+table { border-collapse: collapse; font-size: 0.85rem; margin-top: 0.5rem; width: 100%; }
+th, td { text-align: left; padding: 0.3rem 0.5rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.tip {
+  position: fixed; z-index: 10; pointer-events: none; max-width: 22rem;
+  background: var(--ink); color: var(--paper); padding: 0.55rem 0.7rem; border-radius: 6px;
+  font-size: 0.85rem; line-height: 1.4; opacity: 0; transition: opacity 120ms;
+}
+.tip b { font-variant-numeric: tabular-nums; }
+.tip.on { opacity: 1; }
+
+footer { padding: 2.5rem 0 4rem; color: var(--ink-3); font-size: 0.88rem; }
+.credits { max-width: 40rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sent, .tip { transition: none; }
+}
+</style>
+</head>
+<body>
+<div class="tip" id="tip" role="status" aria-live="polite"></div>
+
+<header class="hero wrap">
+  <div class="masthead">
+    <h1>Meaning Maker</h1>
+    <nav class="ui" aria-label="Project links">
+      <a href="https://meaning-maker.alecflett.workers.dev/">Run it on your own text</a>
+      <a href="https://github.com/alecf/meaning-maker">Source</a>
+    </nav>
+  </div>
+  <p class="dek">An experiment with embeddings: shade each sentence by how far it moves the text from what came just before.</p>
+
+  <figure class="specimen" aria-labelledby="ex-label">
+    <div class="specimen-head">
+      <h2 class="specimen-title" id="ex-label">Examples</h2>
+      <div class="tabs ui" role="tablist" aria-label="Example text" id="tabs"></div>
+    </div>
+    <div class="sheet"><div class="reading" id="hero-text" aria-live="polite"></div></div>
+    <div class="specimen-foot ui">
+      <div class="legend-fade"><span>Repeats</span><span class="bar" aria-hidden="true"></span><span>New</span></div>
+      <p id="hero-source"></p>
+    </div>
+  </figure>
+</header>
+
+<main class="wrap">
+  <section aria-labelledby="h-vectors">
+    <div class="prose">
+      <h2 id="h-vectors">Sentences as directions</h2>
+      <p>An embedding model turns text into a list of numbers, 1,024 here. Read the list as an arrow and texts that mean similar things point in similar directions, even when the words differ. The score used everywhere below is cosine similarity: 1 when two arrows point the same way, lower as they spread apart.</p>
+    </div>
+    <figure class="panel">
+      <div class="vec-layout">
+        <div id="vectors"></div>
+        <svg id="arrows" viewBox="0 0 280 230" role="img" aria-labelledby="arrows-title"><title id="arrows-title">Sketch: A and B point almost the same way; C points somewhere else</title></svg>
+      </div>
+      <figcaption>Left: the real embeddings, one thin bar per number. Right: a 2-D sketch with angles taken from the real scores. With this model even unrelated sentences score around 0.4.</figcaption>
+    </figure>
+  </section>
+
+  <section aria-labelledby="h-window">
+    <div class="prose">
+      <h2 id="h-window">A sliding window</h2>
+      <p>One sentence is a noisy sample, so each step embeds a window: the scored sentence plus a few before it. That window is compared with the previous step's window. A low score means the new sentence pulled the text somewhere else.</p>
+      <p>Bigger windows smooth out sentence-to-sentence noise, so only real changes of subject stand out, like the jump to Darwin at a window of 8. Windows restart at each paragraph. The shading in the examples above is this score, rescaled within each text.</p>
+    </div>
+
+    <div class="lab">
+      <div class="dock ui" id="dock">
+        <select id="ex-select" aria-label="Example text"></select>
+          <div class="transport">
+          <button type="button" class="icon-btn" id="prev" aria-label="Previous sentence"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.6 2.4 5 8l5.6 5.6 1.4-1.4L7.8 8 12 3.8z"/></svg></button>
+          <button type="button" class="icon-btn play" id="play" aria-label="Play"></button>
+          <button type="button" class="icon-btn" id="next" aria-label="Next sentence"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5.4 2.4 11 8l-5.6 5.6L4 12.2 8.2 8 4 3.8z"/></svg></button>
+          <input type="range" id="step" min="1" value="1" aria-label="Sentence">
+        </div>
+        <fieldset class="seg" id="wsizes"><legend>Window</legend></fieldset>
+        <p class="readout" id="readout" aria-live="polite"></p>
+      </div>
+
+      <figure class="panel" id="stepper">
+        <div class="windowkey ui">
+          <span><span class="sw in-cur">Current window</span></span>
+          <span><span class="sw is-new">Scored sentence</span></span>
+          <span><span class="sw in-prev">Previous window</span></span>
+        </div>
+        <div class="windowtext" id="windowtext"></div>
+      </figure>
+
+      <figure class="panel chart" id="linechart">
+        <svg id="line-svg" role="img" aria-labelledby="line-title"><title id="line-title">Score at each step</title></svg>
+        <figcaption>Score at each step. Blue is the selected window size, grey the others. Ticks mark paragraph breaks. Click a point to jump there.</figcaption>
+        <details><summary>Show the numbers</summary><div id="line-table"></div></details>
+      </figure>
+
+      <div class="two-up">
+        <figure class="panel chart" id="pathchart">
+          <svg id="path-svg" role="img" aria-labelledby="path-title"><title id="path-title">Path of the text's windows, projected to two dimensions</title></svg>
+          <figcaption>The path: each window as a point, squashed from 1,024 dimensions to 2, light to dark from start to end. Dashed segments cross a paragraph break. Ringed: the current step.</figcaption>
+        </figure>
+        <figure class="panel chart" id="matrixchart">
+          <svg id="matrix-svg" role="img" aria-labelledby="matrix-title"><title id="matrix-title">Similarity of every window to every other window</title></svg>
+          <figcaption>Every window against every other, at the selected size. Stronger blue is more similar. Dots mark the only cells the score uses, each window against the one before it. Outlined: the current window, across the sentences it covers, with its score ringed. Lines mark paragraph breaks, where windows start over.</figcaption>
+        </figure>
+      </div>
+      <p class="prose after">Try Moby-Dick then Darwin at a window of 1, then 8. At 1 the grid is noise. At 8 the two books split into two blocks, and the step from one to the other is the dot that lands in the dark gap between them.</p>
+    </div>
+  </section>
+</main>
+
+<footer class="wrap ui">
+  <p class="credits">Embeddings from <span id="model"></span> on Cloudflare Workers AI. Texts are public domain, via Project Gutenberg. <a href="https://github.com/alecf/meaning-maker">Source on GitHub</a>.</p>
+</footer>
+
+<script>
+(() => {
+  const state = { ex: 0, w: 8, step: 1 };
+  let data = null;
+  let timer = null;
+  const $ = (id) => document.getElementById(id);
+  const NS = "http://www.w3.org/2000/svg";
+  const tip = $("tip");
+  const reduceMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const ICON_PLAY = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 2.5v11l9-5.5z"/></svg>';
+  const ICON_PAUSE = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 2.5h3v11h-3zM9.5 2.5h3v11h-3z"/></svg>';
+
+  const el = (tag, attrs = {}, parent) => {
+    const node = tag.startsWith("svg:") ? document.createElementNS(NS, tag.slice(4)) : document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === "text") node.textContent = v;
+      else node.setAttribute(k, v);
+    }
+    if (parent) parent.appendChild(node);
+    return node;
+  };
+  const clearSvg = (svg) => { for (const c of [...svg.childNodes]) if (c.nodeName !== "title") c.remove(); };
+  const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const fmt = (x) => x.toFixed(2);
+  const clip = (s, n = 90) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s);
+  const ex = () => data.examples[state.ex];
+  const sims = () => ex().similarity[state.w];
+  const lastStep = () => ex().sentences.length - 1;
+
+  function showTip(evt, html) {
+    tip.innerHTML = html;
+    tip.classList.add("on");
+    const pad = 14;
+    const r = tip.getBoundingClientRect();
+    let x = evt.clientX + pad;
+    let y = evt.clientY + pad;
+    if (x + r.width > window.innerWidth - 8) x = evt.clientX - r.width - pad;
+    if (y + r.height > window.innerHeight - 8) y = evt.clientY - r.height - pad;
+    tip.style.left = `${Math.max(8, x)}px`;
+    tip.style.top = `${Math.max(8, y)}px`;
+  }
+  const hideTip = () => tip.classList.remove("on");
+  const escapeHtml = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+  function mix(a, b, t) {
+    const pa = a.match(/\w\w/g).map((h) => parseInt(h, 16));
+    const pb = b.match(/\w\w/g).map((h) => parseInt(h, 16));
+    return `rgb(${pa.map((v, i) => Math.round(v + (pb[i] - v) * t)).join(",")})`;
+  }
+
+  /** Group sentence indices by paragraph. */
+  function paragraphs(sentences) {
+    const out = [];
+    sentences.forEach((s, i) => {
+      if (!out[s.paragraph]) out[s.paragraph] = [];
+      out[s.paragraph].push(i);
+    });
+    return out.filter(Boolean);
+  }
+
+  // ---------- Examples ----------
+  function renderTabs() {
+    const tabs = $("tabs");
+    tabs.innerHTML = "";
+    data.examples.forEach((e, i) => {
+      const b = el("button", { type: "button", role: "tab", "aria-selected": String(i === state.ex), text: e.title }, tabs);
+      b.addEventListener("click", () => selectExample(i));
+    });
+    const sel = $("ex-select");
+    sel.innerHTML = "";
+    data.examples.forEach((e, i) => { el("option", { value: String(i), text: e.title }, sel); });
+    sel.value = String(state.ex);
+  }
+
+  function selectExample(i) {
+    stop();
+    state.ex = i;
+    state.step = 1;
+    $("hero-text").parentElement.scrollTop = 0;
+    $("windowtext").scrollTop = 0;
+    renderAll();
+  }
+
+  function opacities() {
+    const s = sims();
+    const rest = s.slice(1);
+    const lo = Math.min(...rest);
+    const hi = Math.max(...rest);
+    return s.map((v, i) => (i === 0 || hi === lo ? 1 : 0.16 + 0.84 * ((hi - v) / (hi - lo)) ** 0.9));
+  }
+
+  function renderHero() {
+    const box = $("hero-text");
+    box.innerHTML = "";
+    const o = opacities();
+    const s = sims();
+    for (const para of paragraphs(ex().sentences)) {
+      const p = el("p", {}, box);
+      para.forEach((i, k) => {
+        const span = el("span", { class: "sent", tabindex: "0", text: ex().sentences[i].text }, p);
+        span.style.setProperty("--o", o[i].toFixed(3));
+        const label = i === 0 ? "First sentence: nothing to compare with yet." : `Score: <b>${fmt(s[i])}</b>`;
+        span.addEventListener("mousemove", (e) => showTip(e, label));
+        span.addEventListener("mouseleave", hideTip);
+        span.addEventListener("focus", () => {
+          const r = span.getBoundingClientRect();
+          showTip({ clientX: r.left, clientY: r.bottom }, label);
+        });
+        span.addEventListener("blur", hideTip);
+        if (k < para.length - 1) p.appendChild(document.createTextNode(" "));
+      });
+    }
+    $("hero-source").textContent = `${ex().source}. Window of ${state.w}.`;
+  }
+
+  // ---------- Vectors ----------
+  const TAGS = ["A", "B", "C"];
+
+  function renderVectors() {
+    const box = $("vectors");
+    box.innerHTML = "";
+    const { sentences, vectors } = data.vectorDemo;
+    const maxAbs = Math.max(...vectors.flat().map(Math.abs));
+    const neutral = css("--panel");
+    const pos = css("--accent");
+    const neg = css("--warm");
+    sentences.forEach((s, r) => {
+      const row = el("div", { class: "vec-row" }, box);
+      el("span", { class: "tag", text: TAGS[r] }, row);
+      el("div", { class: "label", text: `“${s}”` }, row);
+      const svg = el("svg:svg", { viewBox: `0 0 ${vectors[r].length} 30`, preserveAspectRatio: "none", role: "img", "aria-label": `Embedding of: ${s}` }, row);
+      vectors[r].forEach((v, i) => {
+        const t = Math.min(1, Math.abs(v) / (maxAbs * 0.6));
+        el("svg:rect", { x: i, y: 0, width: 1.05, height: 30, fill: mix(neutral, v >= 0 ? pos : neg, t) }, svg);
+      });
+    });
+    const key = el("div", { class: "key ui" }, box);
+    el("span", { text: "Positive" }, key).style.setProperty("--sw", pos);
+    el("span", { text: "Negative" }, key).style.setProperty("--sw", neg);
+    el("span", { text: "Near zero" }, key).style.setProperty("--sw", css("--rule"));
+    renderArrows();
+  }
+
+  /** A 2-D sketch: unit arrows whose angles come from the real cosine scores. */
+  function renderArrows() {
+    const svg = $("arrows");
+    clearSvg(svg);
+    const sim = data.vectorDemo.similarity;
+    const deg = Math.PI / 180;
+    const aAB = Math.acos(sim[0][1]);
+    const aC = Math.acos((sim[0][2] + sim[1][2]) / 2);
+    const thA = 112 * deg;
+    const thB = thA - aAB;
+    const thC = (thA + thB) / 2 - aC;
+    const O = [120, 205];
+    const R = 165;
+    const pt = (th, r) => [O[0] + r * Math.cos(th), O[1] - r * Math.sin(th)];
+    const ink = css("--ink");
+
+    el("svg:line", { class: "axis", x1: 10, y1: O[1], x2: 275, y2: O[1] }, svg);
+    const arc = (t1, t2, r) => {
+      const [x1, y1] = pt(t1, r);
+      const [x2, y2] = pt(t2, r);
+      el("svg:path", { class: "arc", d: `M${x1},${y1} A${r},${r} 0 0 1 ${x2},${y2}` }, svg);
+    };
+    arc(thB, thC, 62);
+    const [lx, ly] = pt((thB + thC) / 2, 80);
+    el("svg:text", { class: "score", x: lx, y: ly + 4, "text-anchor": "middle", text: fmt((sim[0][2] + sim[1][2]) / 2) }, svg);
+
+    const arrow = (th, tag, labelSide) => {
+      const [x, y] = pt(th, R);
+      el("svg:line", { x1: O[0], y1: O[1], x2: x, y2: y, stroke: ink, "stroke-width": 2, "stroke-linecap": "round" }, svg);
+      const h = 10, w = 5;
+      const ux = Math.cos(th), uy = -Math.sin(th);
+      const bx = x - ux * h, by = y - uy * h;
+      el("svg:polygon", { points: `${x},${y} ${bx - uy * w},${by + ux * w} ${bx + uy * w},${by - ux * w}`, fill: ink }, svg);
+      const [tx, ty] = pt(th, R + 16);
+      const g = el("svg:g", { transform: `translate(${tx + labelSide * 8},${ty})` }, svg);
+      el("svg:circle", { r: 10, fill: ink }, g);
+      el("svg:text", { y: 4, "text-anchor": "middle", fill: css("--paper"), style: `fill:${css("--paper")};font-weight:600`, text: tag }, g);
+    };
+    arrow(thA, "A", -1);
+    arrow(thB, "B", 1);
+    arrow(thC, "C", 0);
+    const [sx, sy] = pt(thB + aAB / 2, R + 44);
+    el("svg:text", { class: "score", x: sx, y: sy, "text-anchor": "middle", text: fmt(sim[0][1]) }, svg);
+  }
+
+  // ---------- Window stepper ----------
+  function renderWindowSizes() {
+    const seg = $("wsizes");
+    for (const b of seg.querySelectorAll("button")) b.remove();
+    for (const w of data.windowSizes) {
+      const b = el("button", { type: "button", "aria-pressed": String(w === state.w), "aria-label": `Window of ${w} sentence${w > 1 ? "s" : ""}`, text: String(w) }, seg);
+      b.addEventListener("click", () => { state.w = w; renderAll(); });
+    }
+  }
+
+  const windowRange = (i) => [ex().windowStart[state.w][i], i];
+
+  function renderStepper() {
+    const n = ex().sentences.length;
+    const range = $("step");
+    range.max = String(n - 1);
+    range.value = String(state.step);
+    $("prev").disabled = state.step <= 1;
+    $("next").disabled = state.step >= n - 1;
+
+    const [cs, ce] = windowRange(state.step);
+    const [ps, pe] = windowRange(state.step - 1);
+    const s = sims()[state.step];
+    const box = $("windowtext");
+    box.innerHTML = "";
+    let cur = null;
+    for (const para of paragraphs(ex().sentences)) {
+      const p = el("p", {}, box);
+      para.forEach((i, k) => {
+        const classes = ["sent"];
+        if (i >= cs && i <= ce) classes.push("in-cur");
+        if (i >= ps && i <= pe) classes.push("in-prev");
+        if (i === state.step) {
+          classes.push("is-new");
+          const anchor = el("span", { class: "score-anchor" }, p);
+          el("span", { class: "score-badge", text: fmt(s) }, anchor);
+        }
+        const span = el("span", { class: classes.join(" "), text: ex().sentences[i].text }, p);
+        if (i === state.step) cur = span;
+        if (k < para.length - 1) p.appendChild(document.createTextNode(" "));
+      });
+    }
+    if (cur) {
+      const top = cur.offsetTop;
+      if (top < box.scrollTop + 24 || top > box.scrollTop + box.clientHeight - 48) {
+        box.scrollTo({ top: Math.max(0, top - box.clientHeight / 3), behavior: reduceMotion() ? "auto" : "smooth" });
+      }
+    }
+    const all = sims().slice(1);
+    const rank = all.filter((v) => v < s).length;
+    const note = rank === 0 ? "Lowest in this text." : rank === all.length - 1 ? "Highest in this text." : `${rank} of ${all.length} steps lower.`;
+    const sents = ex().sentences;
+    const restart = sents[state.step].paragraph !== sents[state.step - 1].paragraph ? " New paragraph: the window starts over, compared with the last window before it." : "";
+    $("readout").innerHTML = `Sentence ${state.step + 1} of ${n}: <b>${fmt(s)}</b>. ${note}${restart}`;
+  }
+
+  function setStep(i) {
+    state.step = Math.max(1, Math.min(lastStep(), i));
+    renderStepper();
+    renderLine();
+    renderPath();
+    renderMatrix();
+  }
+  const userStep = (i) => { stop(); setStep(i); };
+
+  // ---------- Playback ----------
+  function renderPlay() {
+    const b = $("play");
+    b.innerHTML = timer ? ICON_PAUSE : ICON_PLAY;
+    b.setAttribute("aria-label", timer ? "Pause" : "Play");
+  }
+  function stop() {
+    if (timer) clearInterval(timer);
+    timer = null;
+    renderPlay();
+  }
+  function play() {
+    if (state.step >= lastStep()) setStep(1);
+    timer = setInterval(() => {
+      if (state.step >= lastStep()) stop();
+      else setStep(state.step + 1);
+    }, 1100);
+    renderPlay();
+  }
+
+  // ---------- Line chart ----------
+  function renderLine() {
+    const svg = $("line-svg");
+    const W = 900, H = 220, m = { t: 16, r: 16, b: 34, l: 44 };
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    clearSvg(svg);
+    const e = ex();
+    const n = e.sentences.length;
+    const allVals = data.windowSizes.flatMap((w) => e.similarity[w].slice(1));
+    const yLo = Math.floor(Math.min(...allVals) * 10) / 10;
+    const x = (i) => m.l + ((i - 1) / Math.max(1, n - 2)) * (W - m.l - m.r);
+    const y = (v) => m.t + (1 - (v - yLo) / (1 - yLo)) * (H - m.t - m.b);
+
+    for (let v = yLo; v <= 1.0001; v += 0.1) {
+      el("svg:line", { class: "grid-line", x1: m.l, x2: W - m.r, y1: y(v), y2: y(v) }, svg);
+      el("svg:text", { x: m.l - 8, y: y(v) + 4, "text-anchor": "end", text: v.toFixed(1) }, svg);
+    }
+    e.sentences.forEach((s, i) => {
+      if (i > 0 && s.paragraph !== e.sentences[i - 1].paragraph) {
+        el("svg:line", { class: "para-tick", x1: x(i), x2: x(i), y1: H - m.b, y2: H - m.b + 7 }, svg);
+      }
+      if (i > 0 && (i === 1 || i === n - 1 || (i % 5 === 0 && n - 1 - i > 2))) {
+        el("svg:text", { x: x(i), y: H - 8, "text-anchor": "middle", text: String(i + 1) }, svg);
+      }
+    });
+
+    const line = (vals) => vals.slice(1).map((v, k) => `${k ? "L" : "M"}${x(k + 1).toFixed(1)},${y(v).toFixed(1)}`).join("");
+    for (const w of data.windowSizes) {
+      if (w !== state.w) el("svg:path", { class: "series-ghost", d: line(e.similarity[w]) }, svg);
+    }
+    el("svg:line", { class: "cursor", x1: x(state.step), x2: x(state.step), y1: m.t, y2: H - m.b }, svg);
+    el("svg:path", { class: "series-main", d: line(sims()) }, svg);
+    sims().forEach((v, i) => {
+      if (i === 0) return;
+      el("svg:circle", { class: i === state.step ? "dot cur" : "dot", cx: x(i), cy: y(v), r: i === state.step ? 6 : 4 }, svg);
+    });
+    const colW = (W - m.l - m.r) / Math.max(1, n - 2);
+    sims().forEach((v, i) => {
+      if (i === 0) return;
+      const r = el("svg:rect", { class: "hit", x: x(i) - colW / 2, y: m.t, width: colW, height: H - m.t - m.b }, svg);
+      const html = `<b>Sentence ${i + 1}: ${fmt(v)}</b><br>${escapeHtml(clip(e.sentences[i].text))}`;
+      r.addEventListener("mousemove", (evt) => showTip(evt, html));
+      r.addEventListener("mouseleave", hideTip);
+      r.addEventListener("click", () => userStep(i));
+    });
+
+    const rows = e.sentences.map((s, i) => `<tr><td class="n">${i + 1}</td><td>${escapeHtml(clip(s.text, 70))}</td>${data.windowSizes.map((w) => `<td class="n">${i === 0 ? "–" : fmt(e.similarity[w][i])}</td>`).join("")}</tr>`).join("");
+    $("line-table").innerHTML = `<table><thead><tr><th class="n">#</th><th>Sentence</th>${data.windowSizes.map((w) => `<th class="n">Window ${w}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table>`;
+  }
+
+  // ---------- Path ----------
+  function renderPath() {
+    const svg = $("path-svg");
+    const S = 420, pad = 28;
+    svg.setAttribute("viewBox", `0 0 ${S} ${S}`);
+    clearSvg(svg);
+    const e = ex();
+    const pts = e.path[state.w];
+    const xs = pts.map((p) => p[0]);
+    const ys = pts.map((p) => p[1]);
+    const span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) || 1;
+    const cx = (Math.max(...xs) + Math.min(...xs)) / 2;
+    const cy = (Math.max(...ys) + Math.min(...ys)) / 2;
+    const px = (p) => S / 2 + ((p[0] - cx) / span) * (S - 2 * pad);
+    const py = (p) => S / 2 - ((p[1] - cy) / span) * (S - 2 * pad);
+    const lo = css("--ramp-lo"), hi = css("--ramp-hi");
+    const n = pts.length;
+    const col = (i) => mix(lo, hi, 0.25 + 0.75 * (i / Math.max(1, n - 1)));
+
+    for (let i = 1; i < n; i++) {
+      const crosses = e.sentences[i].paragraph !== e.sentences[i - 1].paragraph;
+      el("svg:line", { x1: px(pts[i - 1]), y1: py(pts[i - 1]), x2: px(pts[i]), y2: py(pts[i]), stroke: col(i), "stroke-width": 2, "stroke-dasharray": crosses ? "4 4" : "none", "stroke-linecap": "round" }, svg);
+    }
+    pts.forEach((p, i) => {
+      if (i === state.step) el("svg:circle", { cx: px(p), cy: py(p), r: 11, fill: "none", stroke: css("--ink"), "stroke-width": 2 }, svg);
+      el("svg:circle", { cx: px(p), cy: py(p), r: 5.5, fill: col(i), stroke: css("--panel"), "stroke-width": 2 }, svg);
+      const hit = el("svg:circle", { class: "hit", cx: px(p), cy: py(p), r: 14 }, svg);
+      const html = `<b>Window ending at sentence ${i + 1}</b><br>${escapeHtml(clip(e.sentences[i].text))}`;
+      hit.addEventListener("mousemove", (evt) => showTip(evt, html));
+      hit.addEventListener("mouseleave", hideTip);
+      hit.addEventListener("click", () => userStep(i));
+    });
+    const lab = (i, text) => el("svg:text", { x: px(pts[i]) + 10, y: py(pts[i]) - 10, text }, svg);
+    lab(0, "start");
+    lab(n - 1, "end");
+  }
+
+  // ---------- Matrix ----------
+  function renderMatrix() {
+    const svg = $("matrix-svg");
+    const S = 420, pad = 4;
+    svg.setAttribute("viewBox", `0 0 ${S} ${S}`);
+    clearSvg(svg);
+    const e = ex();
+    const M = e.matrix[state.w];
+    const n = M.length;
+    const off = M.flatMap((row, i) => row.filter((_, j) => j !== i));
+    const lo = Math.min(...off), hi = Math.max(...off);
+    const cell = (S - 2 * pad) / n;
+    const a = css("--ramp-lo"), b = css("--ramp-hi");
+    const at = (k) => pad + k * cell;
+    const k = state.step;
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n; j++) {
+        const v = M[i][j];
+        const self = i === j;
+        const r = el("svg:rect", { x: at(j) + 1, y: at(i) + 1, width: cell - 2, height: cell - 2, rx: 2, fill: self ? css("--rule") : mix(a, b, (v - lo) / (hi - lo || 1)) }, svg);
+        if (j === i - 1) el("svg:circle", { cx: at(j) + cell / 2, cy: at(i) + cell / 2, r: 2.75, fill: css("--ink-2"), stroke: css("--panel"), "stroke-width": 1, "pointer-events": "none" }, svg);
+        const scoreNote = j === i - 1 ? `<br>This is sentence ${i + 1}’s score.` : "";
+        const html = self
+          ? `<b>Window ending at sentence ${i + 1}</b><br>${escapeHtml(clip(e.sentences[i].text))}`
+          : `<b>${fmt(v)}</b>: window ending at sentence ${i + 1} vs. window ending at ${j + 1}${scoreNote}`;
+        r.addEventListener("mousemove", (evt) => showTip(evt, html));
+        r.addEventListener("mouseleave", hideTip);
+        r.addEventListener("click", () => userStep(Math.max(i, j, 1)));
+      }
+    }
+    // Paragraph breaks: a thin line in the gutter between cells.
+    e.sentences.forEach((s, i) => {
+      if (i > 0 && s.paragraph !== e.sentences[i - 1].paragraph) {
+        el("svg:line", { x1: at(i), x2: at(i), y1: pad, y2: S - pad, stroke: css("--ink-3"), "stroke-width": 1.5, "pointer-events": "none" }, svg);
+        el("svg:line", { x1: pad, x2: S - pad, y1: at(i), y2: at(i), stroke: css("--ink-3"), "stroke-width": 1.5, "pointer-events": "none" }, svg);
+      }
+    });
+    // The current window: its row, across the columns of the sentences it covers.
+    const ws = e.windowStart[state.w][k];
+    el("svg:rect", { x: at(ws), y: at(k), width: at(k) + cell - at(ws), height: cell, fill: "none", stroke: css("--ink-3"), "stroke-width": 1.5, rx: 3, "pointer-events": "none" }, svg);
+    // The one cell that is its score.
+    el("svg:rect", { x: at(k - 1) - 1.5, y: at(k) - 1.5, width: cell + 3, height: cell + 3, fill: "none", stroke: css("--ink"), "stroke-width": 2.5, rx: 4, "pointer-events": "none" }, svg);
+  }
+
+  function renderAll() {
+    renderTabs();
+    renderHero();
+    renderWindowSizes();
+    renderStepper();
+    renderLine();
+    renderPath();
+    renderMatrix();
+  }
+
+  function wire() {
+    $("step").addEventListener("input", (e) => userStep(Number(e.target.value)));
+    $("prev").addEventListener("click", () => userStep(state.step - 1));
+    $("next").addEventListener("click", () => userStep(state.step + 1));
+    $("ex-select").addEventListener("change", (e) => selectExample(Number(e.target.value)));
+    $("play").addEventListener("click", () => (timer ? stop() : play()));
+    matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { renderVectors(); renderAll(); });
+    renderPlay();
+  }
+
+  fetch("data.json")
+    .then((r) => {
+      if (!r.ok) throw new Error(`data.json: HTTP ${r.status}`);
+      return r.json();
+    })
+    .then((d) => {
+      data = d;
+      state.w = d.defaultWindowSize;
+      $("model").textContent = d.model;
+      wire();
+      renderVectors();
+      renderAll();
+    })
+    .catch((err) => {
+      $("hero-text").textContent = `The example data didn't load (${err.message}). Reload the page to try again.`;
+    });
+})();
+</script>
+</body>
+</html>

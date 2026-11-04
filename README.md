@@ -2,6 +2,8 @@
 
 A web app that analyzes text and visualizes how much new information each sentence introduces, using Workers AI embeddings and cosine similarity.
 
+For an interactive explanation of how it works, with real examples, see [alecf.com/meaning-maker](https://alecf.com/meaning-maker/).
+
 ## How it works
 
 Paste any text (up to 3,000 characters) and click **Submit**. Each sentence is rendered with an opacity proportional to how semantically novel it is compared to the preceding context — faded sentences are repeating ideas already covered, bright sentences are introducing new information.
@@ -69,7 +71,12 @@ npm run lint        # Run Biome linter
 npm run lint:fix    # Run Biome linter and apply safe fixes
 npm run typecheck   # Check TypeScript types
 npm test            # Run Vitest tests
+npm run explainer:data  # Regenerate docs/data.json for the explainer (needs `wrangler login`)
 ```
+
+## Explainer page
+
+`docs/` is a static page served by GitHub Pages at [alecf.com/meaning-maker](https://alecf.com/meaning-maker/). `docs/index.html` loads `docs/data.json`, which `scripts/build-explainer-data.ts` generates by running the app's own sentence splitting, windowing and Workers AI embedder over a few public-domain texts. Rerun `npm run explainer:data` after changing the model or windowing so the page stays accurate. To preview locally, serve the folder (e.g. `npx serve docs`), since the page fetches its data.
 
 ## Deploying
 
