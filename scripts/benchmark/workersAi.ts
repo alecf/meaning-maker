@@ -1,4 +1,5 @@
 import type { EmbeddingProvider } from "@/util/benchmark/types";
+import { stableStringify } from "@/util/embedding";
 
 export interface WorkersAiModel {
   name: string;
@@ -16,7 +17,12 @@ export function createWorkersAiProvider(
   const batchSize = model.batchSize ?? 32;
   const prefix = model.prefix ?? "";
   return {
-    id: JSON.stringify({ host: "workers-ai", ...model }),
+    id: stableStringify({
+      host: "workers-ai",
+      name: model.name,
+      pooling: model.pooling,
+      prefix,
+    }),
     async embedBatch(texts) {
       const vectors: number[][] = [];
       for (let i = 0; i < texts.length; i += batchSize) {

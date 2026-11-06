@@ -47,6 +47,24 @@ describe("createWorkersAiProvider", () => {
     await createWorkersAiProvider(ai, { name: "m" }).embedBatch(texts);
     expect(run.mock.calls.map(([, input]) => input.text.length)).toEqual([32, 1]);
   });
+  it("keeps batchSize out of the id, since it doesn't affect vectors", () => {
+    const { ai } = fakeAi();
+    expect(createWorkersAiProvider(ai, { name: "m", batchSize: 1 }).id).toBe(
+      createWorkersAiProvider(ai, { name: "m" }).id,
+    );
+  });
+  it("changes the id with pooling and prefix", () => {
+    const { ai } = fakeAi();
+    const base = createWorkersAiProvider(ai, { name: "m" }).id;
+    expect(createWorkersAiProvider(ai, { name: "m", pooling: "cls" }).id).not.toBe(base);
+    expect(createWorkersAiProvider(ai, { name: "m", prefix: "x" }).id).not.toBe(base);
+  });
+  it("gives no prefix and an empty prefix the same id", () => {
+    const { ai } = fakeAi();
+    expect(createWorkersAiProvider(ai, { name: "m", prefix: "" }).id).toBe(
+      createWorkersAiProvider(ai, { name: "m" }).id,
+    );
+  });
   it("throws on a response without data", async () => {
     const { ai } = fakeAi(() => ({ response: [] }));
     await expect(
