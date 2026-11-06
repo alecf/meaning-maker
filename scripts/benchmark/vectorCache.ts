@@ -69,8 +69,12 @@ export function openVectorCache(dir: string, providerId: string): VectorCache {
       return Array.from(floats);
     },
     put(text, vector) {
+      const floats = new Float32Array(vector);
+      if (!floats.every(Number.isFinite) || floats.every((x) => x === 0)) {
+        throw new Error(`Won't cache a bad vector for: ${text.slice(0, 80)}`);
+      }
       const key = hash(text);
-      const value = Buffer.from(new Float32Array(vector).buffer).toString("base64");
+      const value = Buffer.from(floats.buffer).toString("base64");
       entries.set(key, value);
       appendFileSync(file, `${key}\t${value}\n`);
     },

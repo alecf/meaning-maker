@@ -54,6 +54,19 @@ describe("openVectorCache", () => {
     expect(cache.get("good")).toEqual([1, 2, 3, 4]);
     expect(cache.get("short")).toBeUndefined();
   });
+  it.each([
+    ["NaN", [1, Number.NaN]],
+    ["Infinity", [1, Number.POSITIVE_INFINITY]],
+    ["a value too large for Float32", [1, 1e39]],
+    ["an all-zero vector", [0, 0]],
+    ["values that round to zero in Float32", [1e-50, 0]],
+    ["an empty vector", []],
+  ])("refuses to store %s", (_name, vector) => {
+    const cache = openVectorCache(dir, "p");
+    expect(() => cache.put("bad", vector)).toThrow(/bad vector/);
+    expect(cache.get("bad")).toBeUndefined();
+    expect(openVectorCache(dir, "p").get("bad")).toBeUndefined();
+  });
   it("doesn't turn a line cut 64 characters short into a garbage vector", () => {
     const whole = encode(new Array<number>(48).fill(0.5));
     openVectorCache(dir, "p").put("first", new Array<number>(48).fill(1));
