@@ -26,4 +26,39 @@ describe("bag of words", () => {
     const [a, b] = await createBagOfWordsProvider().embedBatch(["one two", "three"]);
     expect(a.length).toBe(b.length);
   });
+
+  const vectorsOf = (...texts: string[]): Promise<number[][]> =>
+    createBagOfWordsProvider().embedBatch(texts);
+
+  it("treats curly and straight apostrophes the same", async () => {
+    const [curly, straight] = await vectorsOf(
+      "Tom\u2019s dog bit Sam\u2019s cat.",
+      "Tom's dog bit Sam's cat.",
+    );
+    expect(curly).toEqual(straight);
+  });
+  it("normalizes composed and decomposed letters", async () => {
+    const [composed, decomposed] = await vectorsOf("caf\u00e9", "cafe\u0301");
+    expect(composed).toEqual(decomposed);
+  });
+  it("ignores quoting apostrophes around a word", async () => {
+    const [quoted, bare] = await vectorsOf("'dog'", "dog");
+    expect(quoted).toEqual(bare);
+  });
+  it("drops a stray apostrophe", async () => {
+    const [stray, bare] = await vectorsOf("dog ' cat", "dog cat");
+    expect(stray).toEqual(bare);
+  });
+  it.each([
+    ["decimals", "3.5", "5.3"],
+    ["signs", "-5", "5"],
+    ["currencies", "$5", "\u20ac5"],
+  ])("keeps %s in numbers apart", async (_name, first, second) => {
+    const [a, b] = await vectorsOf(first, second);
+    expect(a).not.toEqual(b);
+  });
+  it("leaves sentence punctuation off a number", async () => {
+    const [ending, bare] = await vectorsOf("It cost 5.", "It cost 5");
+    expect(ending).toEqual(bare);
+  });
 });

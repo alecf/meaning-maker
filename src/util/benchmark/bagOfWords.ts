@@ -1,7 +1,12 @@
 import type { EmbeddingProvider } from "./types";
 
+/** Keeps numbers whole, with sign, currency and decimals, so edits to them show. */
+const TOKEN = /[$€£-]?\d+(?:[.,]\d+)*|[\p{L}\p{N}']+/gu;
+
 const words = (text: string): string[] =>
-  text.toLowerCase().match(/[\p{L}\p{N}']+/gu) ?? [];
+  (text.normalize("NFC").replaceAll("\u2019", "'").toLowerCase().match(TOKEN) ?? [])
+    .map((token) => token.replace(/^'+|'+$/g, ""))
+    .filter((token) => token !== "");
 
 /** Word counts over the batch's vocabulary, so triplets must share a batch. */
 export function createBagOfWordsProvider(): EmbeddingProvider {
