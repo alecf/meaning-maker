@@ -70,12 +70,74 @@ describe("compareHosts", () => {
     expect(row.meanHostCosine).toBeCloseTo(2 / 3);
   });
   it("keeps a noise-level flip from blocking interchangeability", () => {
-    const workers = new Map(vectors("a", pass, withSimilarity(1), withSimilarity(0.998)));
-    const ollama = new Map(vectors("a", pass, withSimilarity(0.998), withSimilarity(1)));
-    const row = compareHosts([triplet("a")], workers, ollama);
-    expect(row.forgivenMismatches).toEqual(["a"]);
+    const ids = Array.from({ length: 40 }, (_, i) => `t${i}`);
+    const workers = new Map(
+      ids.flatMap((id) => vectors(id, pass, withSimilarity(1), withSimilarity(0.998))),
+    );
+    const ollama = new Map(
+      ids.flatMap((id, i) =>
+        i === 0
+          ? vectors(id, pass, withSimilarity(0.998), withSimilarity(1))
+          : vectors(id, pass, withSimilarity(1), withSimilarity(0.998)),
+      ),
+    );
+    const row = compareHosts(ids.map((id) => triplet(id)), workers, ollama);
+    expect(row.forgivenMismatches).toEqual(["t0"]);
     expect(row.unforgivenMismatches).toEqual([]);
     expect(row.interchangeable).toBe(true);
+  });
+  it("rejects a one-sided shift of small flips", () => {
+    const ids = Array.from({ length: 100 }, (_, i) => `t${i}`);
+    const workers = new Map(
+      ids.flatMap((id) => vectors(id, pass, withSimilarity(1), withSimilarity(0.995))),
+    );
+    const ollama = new Map(
+      ids.flatMap((id) => vectors(id, pass, withSimilarity(0.995), withSimilarity(1))),
+    );
+    const row = compareHosts(ids.map((id) => triplet(id)), workers, ollama);
+    expect(row.unforgivenMismatches).toEqual([]);
+    expect(row.forgivenMismatches).toHaveLength(100);
+    expect(row.passRateGap).toBe(1);
+    expect(row.interchangeable).toBe(false);
+  });
+  it("allows an overall gap at the limit but not beyond it", () => {
+    const row = (flips: number) => {
+      const ids = Array.from({ length: 100 }, (_, i) => `t${i}`);
+      const small = (id: string, flip: boolean) =>
+        flip
+          ? vectors(id, pass, withSimilarity(0.995), withSimilarity(1))
+          : vectors(id, pass, withSimilarity(1), withSimilarity(0.995));
+      return compareHosts(
+        ids.map((id, i) => ({
+          ...triplet(id),
+          category: i % 2 === 0 ? "negation" : "antonyms",
+        })),
+        new Map(ids.flatMap((id) => small(id, false))),
+        new Map(ids.flatMap((id, i) => small(id, i < flips))),
+      );
+    };
+    expect(row(4).interchangeable).toBe(true);
+    expect(row(6).interchangeable).toBe(false);
+  });
+  it("rejects a large gap in one category that the overall rate hides", () => {
+    const ids = Array.from({ length: 100 }, (_, i) => `t${i}`);
+    const small = (id: string, flip: boolean) =>
+      flip
+        ? vectors(id, pass, withSimilarity(0.995), withSimilarity(1))
+        : vectors(id, pass, withSimilarity(1), withSimilarity(0.995));
+    const row = compareHosts(
+      ids.map((id, i) => ({
+        ...triplet(id),
+        category: i < 20 ? "numbers" : "negation",
+      })),
+      new Map(ids.flatMap((id) => small(id, false))),
+      new Map(ids.flatMap((id, i) => small(id, i < 4))),
+    );
+    expect(row.passRateGap).toBeCloseTo(0.04);
+    expect(row.worstCategoryGap.category).toBe("numbers");
+    expect(row.worstCategoryGap.gap).toBeCloseTo(0.2);
+    expect(row.unforgivenMismatches).toEqual([]);
+    expect(row.interchangeable).toBe(false);
   });
   it("rejects a flip that's large on one host only", () => {
     const workers = new Map(vectors("a", pass, withSimilarity(1), withSimilarity(0.9)));
