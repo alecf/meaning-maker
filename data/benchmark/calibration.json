@@ -1,0 +1,98 @@
+[
+  {
+    "model": "bge-large",
+    "workersAiId": "{\"host\":\"workers-ai\",\"name\":\"@cf/baai/bge-large-en-v1.5\",\"pooling\":\"cls\",\"prefix\":\"\"}",
+    "ollamaId": "{\"digest\":\"b3d71c92805938e2c9d78e6f35e82d7cc1bd77e05b47dd2ab3016240f4021c15\",\"host\":\"ollama\",\"name\":\"bge-large\",\"prefix\":\"\"}",
+    "triplets": 102,
+    "texts": 306,
+    "dimensions": 1024,
+    "meanHostCosine": 0.9999921746701854,
+    "verdictMatchRate": 1,
+    "worstMarginDifference": 0.001239262702406707,
+    "worstMarginTriplet": "cal-quantifiers-04",
+    "workersAi": {
+      "rate": 0.7647058823529411,
+      "low": 0.673717980949697,
+      "high": 0.8364790682100506
+    },
+    "ollama": {
+      "rate": 0.7647058823529411,
+      "low": 0.673717980949697,
+      "high": 0.8364790682100506
+    },
+    "mismatches": [],
+    "interchangeable": true
+  },
+  {
+    "model": "bge-m3",
+    "workersAiId": "{\"host\":\"workers-ai\",\"name\":\"@cf/baai/bge-m3\",\"prefix\":\"\"}",
+    "ollamaId": "{\"digest\":\"7907646426070047a77226ac3e684fbbe8410524f7b4a74d02837e43f2146bab\",\"host\":\"ollama\",\"name\":\"bge-m3\",\"prefix\":\"\"}",
+    "triplets": 102,
+    "texts": 306,
+    "dimensions": 1024,
+    "meanHostCosine": 0.9999936764892028,
+    "verdictMatchRate": 1,
+    "worstMarginDifference": 0.0010743125397402187,
+    "worstMarginTriplet": "cal-quantifiers-01",
+    "workersAi": {
+      "rate": 0.6764705882352942,
+      "low": 0.5807104308299592,
+      "high": 0.7594209352765394
+    },
+    "ollama": {
+      "rate": 0.6764705882352942,
+      "low": 0.5807104308299592,
+      "high": 0.7594209352765394
+    },
+    "mismatches": [],
+    "interchangeable": true
+  },
+  {
+    "model": "qwen3-embedding:0.6b",
+    "workersAiId": "{\"host\":\"workers-ai\",\"name\":\"@cf/qwen/qwen3-embedding-0.6b\",\"prefix\":\"\"}",
+    "ollamaId": "{\"digest\":\"ac6da0dfba84a81fdbfbaf330198c33cd77c4cdfc53e8bc50eb581914a15621d\",\"host\":\"ollama\",\"name\":\"qwen3-embedding:0.6b\",\"options\":{\"num_ctx\":2048},\"prefix\":\"\"}",
+    "triplets": 102,
+    "texts": 306,
+    "dimensions": 1024,
+    "meanHostCosine": 0.999689293318438,
+    "verdictMatchRate": 1,
+    "worstMarginDifference": 0.0056550905784803485,
+    "worstMarginTriplet": "cal-numbers-09",
+    "workersAi": {
+      "rate": 0.5,
+      "low": 0.4047444716850327,
+      "high": 0.5952555283149673
+    },
+    "ollama": {
+      "rate": 0.5,
+      "low": 0.4047444716850327,
+      "high": 0.5952555283149673
+    },
+    "mismatches": [],
+    "interchangeable": true
+  },
+  {
+    "model": "embeddinggemma",
+    "workersAiId": "{\"host\":\"workers-ai\",\"name\":\"@cf/google/embeddinggemma-300m\",\"prefix\":\"task: sentence similarity | query: \"}",
+    "ollamaId": "{\"digest\":\"85462619ee721b466c5927d109d4cb765861907d5417b9109caebc4e614679f1\",\"host\":\"ollama\",\"name\":\"embeddinggemma\",\"prefix\":\"task: sentence similarity | query: \"}",
+    "triplets": 102,
+    "texts": 306,
+    "dimensions": 768,
+    "meanHostCosine": 0.9999938060376193,
+    "verdictMatchRate": 1,
+    "worstMarginDifference": 0.0007253010567247475,
+    "worstMarginTriplet": "cal-negation-scope-14",
+    "workersAi": {
+      "rate": 0.7647058823529411,
+      "low": 0.673717980949697,
+      "high": 0.8364790682100506
+    },
+    "ollama": {
+      "rate": 0.7647058823529411,
+      "low": 0.673717980949697,
+      "high": 0.8364790682100506
+    },
+    "mismatches": [],
+    "interchangeable": true
+  }
+]
