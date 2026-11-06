@@ -34,6 +34,7 @@ describe("scoreTriplet", () => {
     ["a zero edit vector", [1, 0], [1, 0], [0, 0]],
     ["a zero anchor vector", [0, 0], [1, 0], [0, 1]],
     ["a vector whose norm underflows to zero", [1, 0], [1e-200, 0], [0, 1]],
+    ["a norm too small to multiply", [1e-85, 0], [1, 0], [1e-85, 0]],
     ["a longer paraphrase", [1, 0], [1, 0, 9, 9, 9], [0.9, 0.1]],
     ["a shorter edit", [1, 0, 1], [1, 0, 1], [1, 0]],
     ["empty vectors", [], [], []],

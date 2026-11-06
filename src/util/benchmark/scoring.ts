@@ -4,6 +4,9 @@ import type { Interval, TripletScore } from "./types";
 /** Vectors are cached as Float32, so smaller margins are rounding, not signal. */
 export const TIE_TOLERANCE = 1e-6;
 
+/** Below this, multiplying two squared norms can underflow to zero. */
+const MIN_SQUARED_NORM = 1e-150;
+
 function assertScorable(id: string, vectors: number[][]): void {
   const length = vectors[0].length;
   for (const vector of vectors) {
@@ -13,8 +16,8 @@ function assertScorable(id: string, vectors: number[][]): void {
     if (!vector.every(Number.isFinite)) {
       throw new Error(`Triplet ${id}: vector has a non-finite element`);
     }
-    if (vector.reduce((sum, x) => sum + x * x, 0) === 0) {
-      throw new Error(`Triplet ${id}: vector has zero norm`);
+    if (vector.reduce((sum, x) => sum + x * x, 0) < MIN_SQUARED_NORM) {
+      throw new Error(`Triplet ${id}: vector norm is too small`);
     }
   }
 }

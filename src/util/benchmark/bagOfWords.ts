@@ -1,10 +1,21 @@
 import type { EmbeddingProvider } from "./types";
 
-/** Keeps numbers whole, with sign, currency and decimals, so edits to them show. */
-const TOKEN = /[$€£-]?\d+(?:[.,]\d+)*|[\p{L}\p{N}']+/gu;
+/**
+ * Keeps numbers whole, with sign, currency and decimals, so edits to them show.
+ * A hyphen or dot after a letter or digit is punctuation, not part of the number.
+ */
+const TOKEN =
+  /(?:[$€£]|(?<![\p{L}\p{N}])-)?(?:\d+(?:[.,]\d+)*|(?<![\p{L}\p{N}])\.\d+)|[\p{L}\p{N}']+/gu;
+
+const normalize = (text: string): string =>
+  text
+    .normalize("NFC")
+    .replaceAll("’", "'")
+    .replaceAll("−", "-")
+    .toLowerCase();
 
 const words = (text: string): string[] =>
-  (text.normalize("NFC").replaceAll("\u2019", "'").toLowerCase().match(TOKEN) ?? [])
+  (normalize(text).match(TOKEN) ?? [])
     .map((token) => token.replace(/^'+|'+$/g, ""))
     .filter((token) => token !== "");
 

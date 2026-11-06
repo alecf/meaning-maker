@@ -60,6 +60,32 @@ describe("bag of words", () => {
     const [a, b] = await vectorsOf(first, second);
     expect(a).not.toEqual(b);
   });
+  it("reads a hyphen between numbers as a range, not a sign", async () => {
+    const [a, p, e] = await vectorsOf(
+      "Prices rose 10-20 percent.",
+      "Prices rose 10 to 20 percent.",
+      "Prices rose 10-30 percent.",
+    );
+    expect(scoreTriplet("t", a, p, e).passed).toBe(true);
+  });
+  it.each([
+    ["an en dash", "10-20", "10\u201320"],
+    ["a minus sign in a range", "10-20", "10\u221220"],
+    ["separate numbers", "10-20", "10 20"],
+    ["a hyphen after a word", "COVID-19", "covid 19"],
+    ["a true minus sign", "-5", "\u22125"],
+  ])("tokenizes %s the same way", async (_name, first, second) => {
+    const [a, b] = await vectorsOf(first, second);
+    expect(a).toEqual(b);
+  });
+  it("keeps a leading decimal", async () => {
+    const [a, b] = await vectorsOf(".5", "5");
+    expect(a).not.toEqual(b);
+  });
+  it("doesn't read a sentence break as a leading decimal", async () => {
+    const [a, b] = await vectorsOf("Room.5", "Room 5");
+    expect(a).toEqual(b);
+  });
   it("leaves sentence punctuation off a number", async () => {
     const [ending, bare] = await vectorsOf("It cost 5.", "It cost 5");
     expect(ending).toEqual(bare);
