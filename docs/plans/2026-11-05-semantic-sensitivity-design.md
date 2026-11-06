@@ -56,13 +56,14 @@ Chosen on 2026-11-05. Hugging Face downloads and Ollama pulls are proxies for us
 
 ## Running on Ollama
 
-Local runs share one laptop, so the runner must never make Ollama swap models:
+Local runs share one laptop, so the runner must not make Ollama swap models. A lockfile keeps our own runs apart. Outside clients are detected between requests, which leaves a small race:
 
 - Run one model at a time, with one request in flight. Finish all of a model's texts before moving on, and never interleave models.
 - Before starting a model, check `/api/ps`. If another model is loaded, wait for it to go. Don't unload something the runner didn't load.
-- After a model finishes, unload it with `keep_alive: 0` and confirm it has left `/api/ps`.
+- Check `/api/ps` again before each request, and stop the run if a different model is loaded.
+- After a model finishes, unload it with `keep_alive: 0` if this run sent it any requests, and confirm it has left `/api/ps`. A failed unload is a warning, so it can't hide the run's result.
 - Send `truncate: false`, so Ollama rejects text over the limit instead of truncating it silently. Before a run, also embed the longest texts one at a time and stop if `prompt_eval_count` reaches the model's limit, since Ollama only reports token totals per batch.
-- Use each model's documented task prefixes, and record them with the results.
+- Use each model's documented task prefixes, and record them with the results. nomic-embed-text uses `clustering: `, its closest documented match, and qwen3 treats all texts as documents.
 
 Measured on 2026-11-05 on an M2 Max with 32 GB, at 53 to 125 short texts per second:
 
@@ -75,11 +76,11 @@ Measured on 2026-11-05 on an M2 Max with 32 GB, at 53 to 125 short texts per sec
 | bge-m3 | 62 | 689 MB | `cls` | over 1,379 |
 | bge-large | 62 | 625 MB | `cls` | 512 |
 | mxbai-embed-large | 60 | 625 MB | `cls` | 512 |
-| qwen3-embedding:0.6b | 53 | 4.8 GB | last token | over 1,257 |
+| qwen3-embedding:0.6b, `num_ctx: 2048` | 53 at default `num_ctx` | 988 MB | last token | 2,048 |
 
 The core set is about 1,080 texts per model, which takes under 30 seconds per model. PAWS at about 200,000 texts would take about 6 hours across all eight, so it stays an overnight job. The 8-sentence paragraphs came to about 145 tokens, under every limit.
 
-Disk is the tightest resource, with 23 GB free at 98% full. PAWS keeps pair similarities only, never vectors. Set `num_ctx: 2048` on qwen3, which cut its memory use from 4.8 GB to 988 MB.
+Disk is the tightest resource, with 23 GB free at 98% full. PAWS keeps pair similarities only, never vectors. Set `num_ctx: 2048` on qwen3, which cut its memory use from 4.8 GB at the default to 988 MB.
 
 ## Calibration
 
@@ -128,5 +129,4 @@ Vitest covers scoring, ties, Wilson intervals, resuming a run, adapters with moc
 ## Open questions
 
 - Does OpenRouter pass through settings like Cohere's `input_type`, and do its vectors match the direct APIs?
-- Which task prefixes should nomic-embed-text and qwen3 use? Their cards don't cover comparing two sentences. embeddinggemma and EmbeddingGemma 2 use `task: sentence similarity | query: `.
 - Is the Cloudflare account on Workers Free or Workers Paid?

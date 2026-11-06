@@ -18,6 +18,7 @@
 - Never run two Ollama models at once. All Ollama access goes through `withExclusiveModel` (Task 6).
 - PAWS results keep similarities only, never vectors. All-model vector storage would be about 5 GB in binary and over 30 GB as JSON, with 23 GB free.
 - Stop at Task 12. The page tasks depend on what the results show, so they're only outlined here.
+- Won't fix, by decision on 2026-11-05: cache checksums (only matter with real file corruption), choosing the longest texts by characters rather than tokens, and the remaining rare currency forms in bag-of-words.
 
 ## Phase 1: scoring and baseline
 
@@ -506,6 +507,7 @@ Use `mkdtempSync` from `node:fs` and `tmpdir` from `node:os` for a throwaway fol
 - A line cut exactly 64 characters short, followed by a `put`, doesn't produce a garbage vector, and the later entry survives. This reproduces a real bug: the next key used to land on the partial line and complete it.
 - A partial first line can't set the expected vector length.
 - A partial line is dropped on open, even if nothing is written.
+- `put` throws on a non-finite, all-zero or empty vector, checked after converting to Float32, and stores nothing.
 - Lines are skipped unless they have exactly 2 tab-separated parts, a 64-character hex key, a base64 length divisible by 4 and a byte count divisible by 4.
 
 **Step 3: Run it to confirm it fails**
@@ -587,8 +589,12 @@ export function openVectorCache(dir: string, providerId: string): VectorCache {
       return Array.from(floats);
     },
     put(text, vector) {
+      const floats = new Float32Array(vector);
+      if (!floats.every(Number.isFinite) || floats.every((x) => x === 0)) {
+        throw new Error(`Won't cache a bad vector for: ${text.slice(0, 80)}`);
+      }
       const key = hash(text);
-      const value = Buffer.from(new Float32Array(vector).buffer).toString("base64");
+      const value = Buffer.from(floats.buffer).toString("base64");
       entries.set(key, value);
       appendFileSync(file, `${key}\t${value}\n`);
     },
@@ -618,25 +624,39 @@ git commit -m "Add resumable vector cache"
 
 **Step 1: Write the failing test**
 
-Stub `globalThis.fetch` with `vi.fn()` and a small fake of `/api/ps` and `/api/embed`. Test that `withExclusiveModel`:
+Stub `globalThis.fetch` with `vi.fn()` and a small fake of `/api/ps`, `/api/tags`, `/api/embed` and `/api/generate`. Use a throwaway `lockFile`. Test that `withExclusiveModel`:
 
-- Runs the callback when `/api/ps` is empty, then posts `keep_alive: 0` for that model.
+- Runs the callback when `/api/ps` is empty, then posts `keep_alive: 0` for that model if the session embedded.
+- Unloads nothing if the session sent no embed request, so a fully cached rerun touches nothing.
 - Waits while another model is loaded and never posts an unload for that other model.
 - Throws after its timeout if the other model never leaves.
 - Still unloads when the callback throws.
-- Throws if the model is still loaded after the unload, but gives the unload time to finish.
-- Ignores another model that arrives during the run: it isn't blamed or unloaded.
+- Rethrows the callback's error if the unload fails too.
+- Returns the result and warns if the unload fails, or if the model is still loaded afterwards, and gives the unload time to finish.
 - Refuses a second model while one is in use, and recovers after a failure.
+
+Test the lockfile:
+
+- It's created with the `wx` flag, holds the pid, and is removed afterwards, including after a failure.
+- A lock held by a live process throws. A lock with a dead pid, or no pid, is replaced.
+
+Test swap protection:
+
+- `/api/ps` is checked before each embed request, and a different model throws before the request is sent.
+- Our own model being loaded is fine.
 
 Test that `createOllamaProvider`:
 
-- Refuses to embed outside `withExclusiveModel`, as does `assertNotTruncated`.
+- Refuses to embed outside `withExclusiveModel`, or in a session with other options, as does `assertNotTruncated`.
+- Throws on overlapping `embedBatch` calls.
 - Adds the task prefix to each text.
 - Sends one request at a time, in batches of `batchSize`.
 - Sends `truncate: false`.
 - Throws if a response has the wrong number of vectors.
+- Has an id that changes with the digest from `/api/tags`, prefix and options, but not with `batchSize` or `maxTokens`.
+- Throws if `/api/tags` doesn't list the model.
 
-Test that `assertNotTruncated` throws when a text's `prompt_eval_count` reaches `maxTokens`, and passes below it.
+Test that `assertNotTruncated` throws when a text's `prompt_eval_count` reaches `maxTokens`, passes below it, and throws unless the count is a positive number.
 
 **Step 2: Run it to confirm it fails**
 
@@ -646,10 +666,25 @@ Expected: FAIL, cannot find `./ollama`.
 **Step 3: Implement**
 
 ```ts
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 import type { EmbeddingProvider } from "@/util/benchmark/types";
+import { stableStringify } from "@/util/embedding";
 
 const BASE = "http://localhost:11434";
 const POLL_MS = 5_000;
+const LOCK_FILE = ".benchmark-cache/ollama.lock";
+
+async function readJson<T>(path: string, response: Response): Promise<T> {
+  if (!response.ok) {
+    throw new Error(`Ollama ${path}: ${response.status} ${await response.text()}`);
+  }
+  return response.json() as Promise<T>;
+}
+
+async function get<T>(path: string): Promise<T> {
+  return readJson(path, await fetch(`${BASE}${path}`));
+}
 
 async function post<T>(path: string, body: unknown): Promise<T> {
   const response = await fetch(`${BASE}${path}`, {
@@ -657,15 +692,11 @@ async function post<T>(path: string, body: unknown): Promise<T> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!response.ok) {
-    throw new Error(`Ollama ${path}: ${response.status} ${await response.text()}`);
-  }
-  return response.json() as Promise<T>;
+  return readJson(path, response);
 }
 
 async function loadedModels(): Promise<string[]> {
-  const response = await fetch(`${BASE}/api/ps`);
-  const { models } = (await response.json()) as { models: { name: string }[] };
+  const { models } = await get<{ models: { name: string }[] }>("/api/ps");
   return models.map((m) => m.name);
 }
 
@@ -675,6 +706,38 @@ const sleep = (ms: number): Promise<void> =>
 /** `/api/ps` always names a tag, but the registry may leave off `:latest`. */
 const withTag = (name: string): string =>
   name.includes(":") ? name : `${name}:latest`;
+
+const errorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
+
+function isRunning(pid: number): boolean {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "EPERM";
+  }
+}
+
+const writeLock = (file: string): void =>
+  writeFileSync(file, String(process.pid), { flag: "wx" });
+
+function acquireLock(file: string): void {
+  mkdirSync(dirname(file), { recursive: true });
+  try {
+    writeLock(file);
+    return;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+  }
+  const holder = Number(readFileSync(file, "utf8"));
+  if (isRunning(holder)) {
+    throw new Error(`Ollama lock held by pid ${holder}: ${file}`);
+  }
+  rmSync(file, { force: true });
+  writeLock(file);
+}
 
 async function waitForIdle(timeoutMs: number, pollMs: number): Promise<void> {
   const deadline = Date.now() + timeoutMs;
@@ -688,17 +751,24 @@ async function waitForIdle(timeoutMs: number, pollMs: number): Promise<void> {
   }
 }
 
-/** Ollama's documented unload. `/api/embed` without the run's options may reload it. */
+/**
+ * Ollama's documented unload. `/api/embed` without the run's options may reload
+ * it. Only warns on failure, so it can't hide how the run itself ended.
+ */
 async function unload(
   model: string,
   timeoutMs: number,
   pollMs: number,
 ): Promise<void> {
-  await post("/api/generate", { model, keep_alive: 0 });
-  const deadline = Date.now() + timeoutMs;
-  while ((await loadedModels()).includes(withTag(model))) {
-    if (Date.now() >= deadline) throw new Error(`Still loaded: ${model}`);
-    await sleep(pollMs);
+  try {
+    await post("/api/generate", { model, keep_alive: 0 });
+    const deadline = Date.now() + timeoutMs;
+    while ((await loadedModels()).includes(withTag(model))) {
+      if (Date.now() >= deadline) throw new Error("still loaded");
+      await sleep(pollMs);
+    }
+  } catch (error) {
+    console.warn(`Couldn't unload ${model}: ${errorMessage(error)}`);
   }
 }
 
@@ -706,35 +776,53 @@ export interface ExclusiveOptions {
   timeoutMs?: number;
   pollMs?: number;
   unloadTimeoutMs?: number;
+  lockFile?: string;
 }
 
-/** The model this process holds. Embedding is refused for any other. */
-let activeModel: string | undefined;
+interface Session {
+  model: OllamaModel;
+  /** Set once an embed is sent. Without one, there's nothing of ours to unload. */
+  embedded: boolean;
+  busy: boolean;
+}
+
+let session: Session | undefined;
+
+const sameModel = (a: OllamaModel, b: OllamaModel): boolean =>
+  a.name === b.name &&
+  stableStringify(a.options ?? {}) === stableStringify(b.options ?? {});
 
 /**
- * The only way to use a model. Waits for Ollama to be idle, so it never forces
- * a swap, and unloads its own model afterwards. Never unloads anything else.
+ * The only way to use a model. The lockfile stops our own runs from colliding,
+ * and `/api/ps` is checked before each request to detect outside clients. A
+ * client that loads a model between that check and the request can still force
+ * a swap, so this narrows that race rather than closing it. Unloads only a
+ * model this session used, and never anything else.
  */
 export async function withExclusiveModel<T>(
-  model: string,
+  model: OllamaModel,
   run: () => Promise<T>,
   {
     timeoutMs = 600_000,
     pollMs = POLL_MS,
     unloadTimeoutMs = 30_000,
+    lockFile = LOCK_FILE,
   }: ExclusiveOptions = {},
 ): Promise<T> {
-  if (activeModel) throw new Error(`Already using ${activeModel}`);
-  activeModel = model;
+  if (session) throw new Error(`Already using ${session.model.name}`);
+  acquireLock(lockFile);
+  const own: Session = { model, embedded: false, busy: false };
+  session = own;
   try {
     await waitForIdle(timeoutMs, pollMs);
     try {
       return await run();
     } finally {
-      await unload(model, unloadTimeoutMs, pollMs);
+      if (own.embedded) await unload(model.name, unloadTimeoutMs, pollMs);
     }
   } finally {
-    activeModel = undefined;
+    session = undefined;
+    rmSync(lockFile, { force: true });
   }
 }
 
@@ -752,12 +840,17 @@ interface EmbedResponse {
 }
 
 async function embedOnce(
+  own: Session,
   model: OllamaModel,
   input: string[],
 ): Promise<EmbedResponse> {
-  if (activeModel !== model.name) {
-    throw new Error(`Use ${model.name} inside withExclusiveModel`);
+  const others = (await loadedModels()).filter(
+    (name) => name !== withTag(model.name),
+  );
+  if (others.length > 0) {
+    throw new Error(`${others.join(", ")} loaded while using ${model.name}`);
   }
+  own.embedded = true;
   const response = await post<EmbedResponse>("/api/embed", {
     model: model.name,
     input: input.map((text) => model.prefix + text),
@@ -773,18 +866,54 @@ async function embedOnce(
   return response;
 }
 
-export function createOllamaProvider(model: OllamaModel): EmbeddingProvider {
+/** Holds the session's one slot, so calls can't overlap between requests. */
+async function oneAtATime<T>(
+  model: OllamaModel,
+  work: (own: Session) => Promise<T>,
+): Promise<T> {
+  if (!session || !sameModel(session.model, model)) {
+    throw new Error(`Use ${model.name} inside withExclusiveModel`);
+  }
+  const own = session;
+  if (own.busy) throw new Error(`${model.name} already has a request in flight`);
+  own.busy = true;
+  try {
+    return await work(own);
+  } finally {
+    own.busy = false;
+  }
+}
+
+async function modelDigest(name: string): Promise<string> {
+  const { models } = await get<{ models: { name: string; digest: string }[] }>(
+    "/api/tags",
+  );
+  const found = models.find((m) => m.name === withTag(name));
+  if (!found) throw new Error(`${name} isn't installed`);
+  return found.digest;
+}
+
+export async function createOllamaProvider(
+  model: OllamaModel,
+): Promise<EmbeddingProvider> {
   const batchSize = model.batchSize ?? 64;
+  const { name, prefix, options } = model;
+  const digest = await modelDigest(name);
   return {
-    id: JSON.stringify({ host: "ollama", ...model }),
-    async embedBatch(texts) {
-      const vectors: number[][] = [];
-      for (let i = 0; i < texts.length; i += batchSize) {
-        const { embeddings } = await embedOnce(model, texts.slice(i, i + batchSize));
-        vectors.push(...embeddings);
-      }
-      return vectors;
-    },
+    id: stableStringify({ host: "ollama", name, prefix, options, digest }),
+    embedBatch: (texts) =>
+      oneAtATime(model, async (own) => {
+        const vectors: number[][] = [];
+        for (let i = 0; i < texts.length; i += batchSize) {
+          const { embeddings } = await embedOnce(
+            own,
+            model,
+            texts.slice(i, i + batchSize),
+          );
+          vectors.push(...embeddings);
+        }
+        return vectors;
+      }),
   };
 }
 
@@ -792,17 +921,22 @@ export function createOllamaProvider(model: OllamaModel): EmbeddingProvider {
  * `prompt_eval_count` is a batch total, so per-text checks need their own
  * requests. Checks the longest few texts, which is where truncation would hit.
  */
-export async function assertNotTruncated(
+export function assertNotTruncated(
   model: OllamaModel,
   texts: string[],
 ): Promise<void> {
   const longest = [...texts].sort((a, b) => b.length - a.length).slice(0, 5);
-  for (const text of longest) {
-    const { prompt_eval_count: tokens } = await embedOnce(model, [text]);
-    if (tokens >= model.maxTokens) {
-      throw new Error(`${model.name} reached ${tokens} tokens on: ${text.slice(0, 80)}`);
+  return oneAtATime(model, async (own) => {
+    for (const text of longest) {
+      const { prompt_eval_count: tokens } = await embedOnce(own, model, [text]);
+      if (typeof tokens !== "number" || !(tokens > 0)) {
+        throw new Error(`${model.name} gave prompt_eval_count ${tokens}`);
+      }
+      if (tokens >= model.maxTokens) {
+        throw new Error(`${model.name} reached ${tokens} tokens on: ${text.slice(0, 80)}`);
+      }
     }
-  }
+  });
 }
 ```
 
@@ -836,6 +970,7 @@ With a fake `Ai` whose `run` is `vi.fn()`, test that:
 - Texts go out in batches of at most `batchSize`, in order.
 - A response without `data` throws.
 - A response with the wrong number of vectors throws.
+- The id changes with pooling and prefix, but not with `batchSize`.
 
 **Step 2: Run it to confirm it fails**
 
@@ -846,6 +981,7 @@ Expected: FAIL, cannot find `./workersAi`.
 
 ```ts
 import type { EmbeddingProvider } from "@/util/benchmark/types";
+import { stableStringify } from "@/util/embedding";
 
 export interface WorkersAiModel {
   name: string;
@@ -863,7 +999,12 @@ export function createWorkersAiProvider(
   const batchSize = model.batchSize ?? 32;
   const prefix = model.prefix ?? "";
   return {
-    id: JSON.stringify({ host: "workers-ai", ...model }),
+    id: stableStringify({
+      host: "workers-ai",
+      name: model.name,
+      pooling: model.pooling,
+      prefix,
+    }),
     async embedBatch(texts) {
       const vectors: number[][] = [];
       for (let i = 0; i < texts.length; i += batchSize) {
@@ -911,6 +1052,7 @@ git commit -m "Add Workers AI benchmark provider with pooling"
 
 **Files:**
 - Create: `scripts/benchmark/models.ts`
+- Test: `scripts/benchmark/models.test.ts`
 
 **Step 1: Confirm the task prefixes**
 
@@ -924,14 +1066,18 @@ Checked on 2026-11-05 against each model's own card:
 | bge-m3 | None | [Card](https://huggingface.co/BAAI/bge-m3): no instructions needed |
 | embeddinggemma | `task: sentence similarity \| query: ` | [Card](https://huggingface.co/google/embeddinggemma-300m) |
 | embeddinggemma-2 | `task: sentence similarity \| query: ` | [Card](https://huggingface.co/google/embeddinggemma-2) and its `config_sentence_transformers.json` |
-| nomic-embed-text | **Unresolved**, empty for now | [Card](https://huggingface.co/nomic-ai/nomic-embed-text-v1.5) requires a prefix but names none for this task. `clustering: ` is the closest |
-| qwen3-embedding:0.6b | **Unresolved**, empty for now | [Card](https://huggingface.co/Qwen/Qwen3-Embedding-0.6B) covers queries and documents, not comparing two sentences |
+| nomic-embed-text | `clustering: ` | [Card](https://huggingface.co/nomic-ai/nomic-embed-text-v1.5) requires a prefix but names none for comparing sentences. This is the closest documented match, since it covers removing semantic duplicates |
+| qwen3-embedding:0.6b | None | [Card](https://huggingface.co/Qwen/Qwen3-Embedding-0.6B) covers queries and documents, not comparing two sentences, so all texts are treated as documents |
 
 Use the same prefix on all three texts of a triplet, and use the same prefix on both hosts for calibration. The prefix is part of the provider id, so changing one misses the cache instead of reusing old vectors.
 
 **Step 2: Write the registry**
 
-List all Ollama models as `OllamaModel` entries. `maxTokens` is the lowest limit known for each, from `/api/show` or the request's own `num_ctx`:
+List all Ollama models as `OllamaModel` entries, and these Workers AI entries as `WorkersAiModel`: bge-large with `mean`, bge-large with `cls`, bge-m3, qwen3 and embeddinggemma. Share each prefix constant between a model's entries on both hosts.
+
+Every entry has `availability: "live" | "batch-only"`. The Workers AI entries for bge-large, bge-m3 and qwen3 are live. embeddinggemma stays batch-only until it's priced, and Ollama entries are always batch-only.
+
+`maxTokens` is the lowest limit known for each, from `/api/show` or the request's own `num_ctx`:
 
 | Model | `maxTokens` | Why |
 |---|---|---|
@@ -946,7 +1092,7 @@ Set `options: { num_ctx: 2048 }` on qwen3. Measured through `withExclusiveModel`
 **Step 3: Commit**
 
 ```bash
-git add scripts/benchmark/models.ts
+git add scripts/benchmark/models.ts scripts/benchmark/models.test.ts
 git commit -m "Add benchmark model registry"
 ```
 
@@ -1058,7 +1204,7 @@ git commit -m "Add OpenRouter benchmark provider"
 
 **Step 1: Write `run.ts`**
 
-Load approved triplets, expand them with context under the same `baseId`, and run each model in turn. Check the cache first, and only embed what's missing. Ollama models run inside `withExclusiveModel`. A provider failure or a `scoreTriplet` throw puts that model under `missing` with its error, and the run continues. Skip the cache for `batchScoped` providers such as bag-of-words, and embed and score each triplet in its own batch.
+Load approved triplets, expand them with context under the same `baseId`, and run each model in turn. Check the cache first, and only embed what's missing. Ollama models run inside `withExclusiveModel`. Call `embedBatch` in chunks and `put` after each chunk, so progress survives a failure. A provider failure or a `scoreTriplet` throw puts that model under `missing` with its error, and the run continues. Skip the cache for `batchScoped` providers such as bag-of-words, and embed and score each triplet in its own batch.
 
 **Step 2: Test the report**
 
