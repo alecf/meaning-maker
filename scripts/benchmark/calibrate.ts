@@ -4,31 +4,31 @@
  * rerun only pays for what's missing.
  *
  *   npm run benchmark:calibrate
+ *   npm run benchmark:calibrate:context   (approved triplets, 8 sentences of filler)
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { getPlatformProxy } from "wrangler";
 import { compareHosts, type HostComparison, type HostVectors } from "./calibration";
+import { withContext } from "./context";
 import { embedCached } from "./embedCached";
-import { OLLAMA_MODELS, WORKERS_AI_MODELS } from "./models";
+import { SHARED_MODELS } from "./models";
 import {
   assertNotTruncated,
   createOllamaProvider,
-  type OllamaModel,
   type OllamaProvider,
   withExclusiveModel,
 } from "./ollama";
-import { parseTriplets } from "./validate";
+import { parseTriplets, readApprovedTriplets } from "./validate";
 import { openVectorCache, type VectorCache } from "./vectorCache";
-import { createWorkersAiProvider, type WorkersAiModel } from "./workersAi";
+import { createWorkersAiProvider } from "./workersAi";
 
+const onContext = process.argv[3] === "context";
 const TRIPLETS_FILE = "data/benchmark/calibration-triplets.jsonl";
-const RESULTS_FILE = "data/benchmark/calibration.json";
+const FILLER_FILE = "data/benchmark/context-sentences.json";
+const RESULTS_FILE = onContext
+  ? "data/benchmark/calibration-context.json"
+  : "data/benchmark/calibration.json";
 const CACHE_DIR = ".benchmark-cache/vectors";
-
-interface Pair {
-  ollama: OllamaModel;
-  workersAi: WorkersAiModel;
-}
 
 interface Row extends Partial<HostComparison> {
   model: string;
@@ -37,21 +37,7 @@ interface Row extends Partial<HostComparison> {
   error?: string;
 }
 
-function pair(ollamaName: string, workersName: string, pooling?: "cls"): Pair {
-  const ollama = OLLAMA_MODELS.find((m) => m.name === ollamaName);
-  const workersAi = WORKERS_AI_MODELS.find(
-    (m) => m.name === workersName && m.pooling === pooling,
-  );
-  if (!ollama || !workersAi) throw new Error(`${ollamaName} isn't registered`);
-  return { ollama, workersAi };
-}
-
-const PAIRS: Pair[] = [
-  pair("bge-large", "@cf/baai/bge-large-en-v1.5", "cls"),
-  pair("bge-m3", "@cf/baai/bge-m3"),
-  pair("qwen3-embedding:0.6b", "@cf/qwen/qwen3-embedding-0.6b"),
-  pair("embeddinggemma", "@cf/google/embeddinggemma-300m"),
-];
+const filler = (): string[] => JSON.parse(readFileSync(FILLER_FILE, "utf8"));
 
 const errorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
@@ -68,15 +54,17 @@ async function ollamaVectors(
   });
 }
 
-const triplets = parseTriplets(readFileSync(TRIPLETS_FILE, "utf8"));
+const triplets = onContext
+  ? readApprovedTriplets().map((t) => withContext(t, filler(), 8))
+  : parseTriplets(readFileSync(TRIPLETS_FILE, "utf8"));
 const texts = triplets.flatMap((t) => [t.anchor, t.paraphrase, t.edit]);
 
 const { env, dispose } = await getPlatformProxy<CloudflareEnv>();
-const rows: Row[] = PAIRS.map(({ ollama }) => ({ model: ollama.name }));
+const rows: Row[] = SHARED_MODELS.map(({ ollama }) => ({ model: ollama.name }));
 const workersVectors = new Map<string, HostVectors>();
 
 try {
-  for (const [i, { ollama, workersAi }] of PAIRS.entries()) {
+  for (const [i, { ollama, workersAi }] of SHARED_MODELS.entries()) {
     console.log(`Workers AI: ${workersAi.name}`);
     try {
       const provider = createWorkersAiProvider(env.AI, workersAi);
@@ -91,7 +79,7 @@ try {
   await dispose();
 }
 
-for (const [i, { ollama }] of PAIRS.entries()) {
+for (const [i, { ollama }] of SHARED_MODELS.entries()) {
   const workers = workersVectors.get(ollama.name);
   if (!workers) continue;
   console.log(`Ollama: ${ollama.name}`);

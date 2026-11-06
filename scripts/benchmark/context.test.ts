@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Triplet } from "@/util/benchmark/types";
-import { withContext } from "./context";
+import { atAllContexts, withContext } from "./context";
 
 const triplet: Triplet = {
   id: "t",
@@ -13,6 +13,15 @@ const triplet: Triplet = {
   status: "approved",
 };
 const filler = ["One.", "Two.", "Three.", "Four.", "Five.", "Six.", "Seven.", "Eight."];
+
+describe("atAllContexts", () => {
+  it("gives each triplet four versions under one baseId", () => {
+    const rows = atAllContexts([triplet], filler);
+    expect(rows.map((t) => t.contextSentences)).toEqual([0, 1, 3, 8]);
+    expect(new Set(rows.map((t) => t.baseId)).size).toBe(1);
+    expect(new Set(rows.map((t) => t.id)).size).toBe(4);
+  });
+});
 
 describe("withContext", () => {
   it("leaves a bare triplet alone", () => {

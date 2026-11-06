@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { tokenize } from "@/util/benchmark/bagOfWords";
 import { CATEGORIES, type Category, type Triplet } from "@/util/benchmark/types";
 
@@ -142,3 +143,9 @@ export const parseTriplets = (jsonl: string): Triplet[] =>
     .trim()
     .split("\n")
     .map((line) => JSON.parse(line) as Triplet);
+
+/** Only approved rows reach the benchmark. */
+export const readApprovedTriplets = (): Triplet[] =>
+  parseTriplets(readFileSync("data/benchmark/triplets.jsonl", "utf8")).filter(
+    (t) => t.status === "approved",
+  );

@@ -165,3 +165,25 @@ export const OPENROUTER_MODELS: (OpenRouterModel & Registered)[] = [
     availability: "batch-only",
   },
 ];
+
+export interface SharedModel {
+  ollama: OllamaModel & Registered;
+  workersAi: WorkersAiModel & Registered;
+}
+
+function shared(ollamaName: string, workersName: string, pooling?: "cls"): SharedModel {
+  const ollama = OLLAMA_MODELS.find((m) => m.name === ollamaName);
+  const workersAi = WORKERS_AI_MODELS.find(
+    (m) => m.name === workersName && m.pooling === pooling,
+  );
+  if (!ollama || !workersAi) throw new Error(`${ollamaName} isn't registered`);
+  return { ollama, workersAi };
+}
+
+/** Models on both hosts. Calibration decides whether they can share a row. */
+export const SHARED_MODELS: SharedModel[] = [
+  shared("bge-large", "@cf/baai/bge-large-en-v1.5", "cls"),
+  shared("bge-m3", "@cf/baai/bge-m3"),
+  shared("qwen3-embedding:0.6b", "@cf/qwen/qwen3-embedding-0.6b"),
+  shared("embeddinggemma", "@cf/google/embeddinggemma-300m"),
+];

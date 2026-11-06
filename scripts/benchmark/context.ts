@@ -1,5 +1,7 @@
 import type { Triplet } from "@/util/benchmark/types";
 
+export const CONTEXT_LENGTHS: Triplet["contextSentences"][] = [0, 1, 3, 8];
+
 /**
  * Puts neutral filler before all three texts, using the last `sentences` of it,
  * so filler always sits directly before the text under test.
@@ -25,4 +27,11 @@ export function withContext(
     edit: `${lead} ${triplet.edit}`,
     contextSentences: sentences,
   };
+}
+
+/** Every bare triplet at every context length, under its own baseId. */
+export function atAllContexts(triplets: Triplet[], filler: string[]): Triplet[] {
+  return CONTEXT_LENGTHS.flatMap((sentences) =>
+    triplets.map((triplet) => withContext(triplet, filler, sentences)),
+  );
 }

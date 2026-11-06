@@ -88,7 +88,7 @@ The same model name doesn't guarantee the same vectors across hosts, because qua
 
 For each model on both Ollama and Workers AI, run about 100 triplets on both hosts and compare the vectors and the pass or fail verdicts. A verdict flip is forgiven only when the absolute margin is below `HOST_NOISE_MARGIN` (0.01) on both hosts, since a triplet that close to a tie can flip on noise. Any other flip means the model isn't interchangeable, however high its match rate. The hosts' pass rates must also be within 5 points overall and 15 points in each category, since forgiven flips can all lean one way. A model that fails either test gets two rows, or the page says live scores can differ from the heatmap.
 
-Run on 2026-11-05 with 102 triplets: bge-large with `cls`, bge-m3, qwen3 and embeddinggemma all matched on every verdict, with a mean cross-host cosine of 0.99969 to 0.99999. Each gets one row. Before the main run, calibration repeats on the approved triplets at 8 sentences of context, because bare sentences don't prove this for longer text.
+Run on 2026-11-05 with 102 triplets: bge-large with `cls`, bge-m3, qwen3 and embeddinggemma all matched on every verdict, with a mean cross-host cosine of 0.99969 to 0.99999. Each gets one row. Repeated on 2026-11-06 with the 119 approved triplets at 8 sentences of context, because bare sentences don't prove this for longer text: all four again matched on every verdict, with a mean cross-host cosine of 0.99956 to 0.99999 and no gap in pass rates.
 
 ## Test set
 
@@ -139,6 +139,18 @@ Measured on 2026-11-06.
 - Each text gets its own request, since batching saves no money and Cohere's vectors change with their batch, moving margins by up to 0.0006.
 - Each model is pinned to one upstream with no fallback, and a response from any other upstream is an error.
 - Voyage sometimes returns a different vector for an identical request. In a retest of 40 triplets the median margin shift was 0.001 and the largest 0.014, with no verdict flips. The cause is unknown. OpenAI and all-mpnet moved by at most 0.00006, and Cohere and Gemini repeated exactly on one triplet.
+
+## First results
+
+Run on 2026-11-06, with 16 models and none missing. The idea's kill criteria look passed: pending review with Alec.
+
+- Models differ clearly on bare sentences: Gemini Embedding 2 scored 78.2% (69.9 to 84.6), Cohere Embed 5 Pro 23.5% (16.8 to 31.9) and bag-of-words 0.8%.
+- The ranking is stable: the Spearman correlation of model pass rates between random stratified halves has a median of 0.92 (0.84 to 0.97). That's a check within one set, not a second set.
+- Swapped roles defeats everything, with no model above 11%.
+- Filler washes out most of the signal. At 8 sentences mean paraphrase and edit similarities are almost equal, so rates near 50% there may be close to chance, and models below 50% on bare sentences can rise toward it. That's an explanation to test, not a finding.
+- Voyage's retest flipped 8 of 476 verdicts, all with filler, and moved margins by a median of 0.001 and at most 0.026.
+
+The prefixes and `input_type` values are judgement calls, and nomic's, Cohere's and Gemini's could matter. Never pick them by score.
 
 ## Open questions
 

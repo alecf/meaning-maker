@@ -1,0 +1,122 @@
+[
+  {
+    "model": "bge-large",
+    "workersAiId": "{\"host\":\"workers-ai\",\"name\":\"@cf/baai/bge-large-en-v1.5\",\"pooling\":\"cls\",\"prefix\":\"\"}",
+    "ollamaId": "{\"digest\":\"b3d71c92805938e2c9d78e6f35e82d7cc1bd77e05b47dd2ab3016240f4021c15\",\"host\":\"ollama\",\"name\":\"bge-large\",\"prefix\":\"\"}",
+    "triplets": 119,
+    "texts": 357,
+    "dimensions": 1024,
+    "meanHostCosine": 0.9999914117787153,
+    "verdictMatchRate": 1,
+    "worstMarginDifference": 0.00040314477032366014,
+    "worstMarginTriplet": "ant-08-context-8",
+    "workersAi": {
+      "rate": 0.5042016806722689,
+      "low": 0.4156543078991713,
+      "high": 0.5924862662124265
+    },
+    "ollama": {
+      "rate": 0.5042016806722689,
+      "low": 0.4156543078991713,
+      "high": 0.5924862662124265
+    },
+    "passRateGap": 0,
+    "worstCategoryGap": {
+      "category": "negation",
+      "gap": 0
+    },
+    "forgivenMismatches": [],
+    "unforgivenMismatches": [],
+    "interchangeable": true
+  },
+  {
+    "model": "bge-m3",
+    "workersAiId": "{\"host\":\"workers-ai\",\"name\":\"@cf/baai/bge-m3\",\"prefix\":\"\"}",
+    "ollamaId": "{\"digest\":\"7907646426070047a77226ac3e684fbbe8410524f7b4a74d02837e43f2146bab\",\"host\":\"ollama\",\"name\":\"bge-m3\",\"prefix\":\"\"}",
+    "triplets": 119,
+    "texts": 357,
+    "dimensions": 1024,
+    "meanHostCosine": 0.9999894036823316,
+    "verdictMatchRate": 1,
+    "worstMarginDifference": 0.0001818388225105494,
+    "worstMarginTriplet": "num-15-context-8",
+    "workersAi": {
+      "rate": 0.4369747899159664,
+      "low": 0.3512097950721258,
+      "high": 0.5266815932539053
+    },
+    "ollama": {
+      "rate": 0.4369747899159664,
+      "low": 0.3512097950721258,
+      "high": 0.5266815932539053
+    },
+    "passRateGap": 0,
+    "worstCategoryGap": {
+      "category": "negation",
+      "gap": 0
+    },
+    "forgivenMismatches": [],
+    "unforgivenMismatches": [],
+    "interchangeable": true
+  },
+  {
+    "model": "qwen3-embedding:0.6b",
+    "workersAiId": "{\"host\":\"workers-ai\",\"name\":\"@cf/qwen/qwen3-embedding-0.6b\",\"prefix\":\"\"}",
+    "ollamaId": "{\"digest\":\"ac6da0dfba84a81fdbfbaf330198c33cd77c4cdfc53e8bc50eb581914a15621d\",\"host\":\"ollama\",\"name\":\"qwen3-embedding:0.6b\",\"options\":{\"num_ctx\":2048},\"prefix\":\"\"}",
+    "triplets": 119,
+    "texts": 357,
+    "dimensions": 1024,
+    "meanHostCosine": 0.9995604994665269,
+    "verdictMatchRate": 1,
+    "worstMarginDifference": 0.002634909617987291,
+    "worstMarginTriplet": "quant-11-context-8",
+    "workersAi": {
+      "rate": 0.31932773109243695,
+      "low": 0.24233954809443967,
+      "high": 0.40761576510684916
+    },
+    "ollama": {
+      "rate": 0.31932773109243695,
+      "low": 0.24233954809443967,
+      "high": 0.40761576510684916
+    },
+    "passRateGap": 0,
+    "worstCategoryGap": {
+      "category": "negation",
+      "gap": 0
+    },
+    "forgivenMismatches": [],
+    "unforgivenMismatches": [],
+    "interchangeable": true
+  },
+  {
+    "model": "embeddinggemma",
+    "workersAiId": "{\"host\":\"workers-ai\",\"name\":\"@cf/google/embeddinggemma-300m\",\"prefix\":\"task: sentence similarity | query: \"}",
+    "ollamaId": "{\"digest\":\"85462619ee721b466c5927d109d4cb765861907d5417b9109caebc4e614679f1\",\"host\":\"ollama\",\"name\":\"embeddinggemma\",\"prefix\":\"task: sentence similarity | query: \"}",
+    "triplets": 119,
+    "texts": 357,
+    "dimensions": 768,
+    "meanHostCosine": 0.9999917951093075,
+    "verdictMatchRate": 1,
+    "worstMarginDifference": 0.00024849627484502257,
+    "worstMarginTriplet": "quant-09-context-8",
+    "workersAi": {
+      "rate": 0.6470588235294118,
+      "low": 0.5578268486620179,
+      "high": 0.7270932452439098
+    },
+    "ollama": {
+      "rate": 0.6470588235294118,
+      "low": 0.5578268486620179,
+      "high": 0.7270932452439098
+    },
+    "passRateGap": 0,
+    "worstCategoryGap": {
+      "category": "negation",
+      "gap": 0
+    },
+    "forgivenMismatches": [],
+    "unforgivenMismatches": [],
+    "interchangeable": true
+  }
+]
