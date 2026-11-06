@@ -1250,7 +1250,7 @@ A separate reviewer writes an independent critique of each one, and records the 
 
 Merge the critique into `triplets.jsonl`: apply each fix's text, and add a `critique` field with the verdict and reason. Rejected rows move to `triplets-rejected.jsonl` with their reasons. Rows written to replace them have `"origin": "added-after-critique"`. Rows stay `status: "draft"`, and the same selection rule applies.
 
-The critique drew the entailment line: an edit that the anchor's claim merely implies against, such as not-all to none, is rejected. New negation-scope rows avoid neg-raising verbs (think, believe, want, plan, advise, choose) and not-all/none pairs.
+The critique drew the entailment line: an edit that entails the anchor, such as not-all to none, is rejected, because only an implicature separates them. New negation-scope rows avoid neg-raising verbs (think, believe, want, plan, advise, choose) and not-all/none pairs.
 
 **Step 3: Publish the shortlist for review**
 
