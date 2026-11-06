@@ -57,13 +57,24 @@ describe("passRate", () => {
     expect(low).toBeLessThan(rate);
     expect(high).toBeGreaterThan(rate);
   });
-  it("is deterministic", () => {
-    expect(passRate(scores(7, 15))).toEqual(passRate(scores(7, 15)));
+  it("gives the Wilson interval for a mixed result", () => {
+    const { low, high } = passRate(scores(60, 100));
+    expect(low).toBeCloseTo(0.502, 3);
+    expect(high).toBeCloseTo(0.691, 3);
   });
-  it("collapses when every triplet ties at zero", () => {
-    expect(passRate(scores(0, 15))).toEqual({ rate: 0, low: 0, high: 0 });
+  it("keeps a real interval when every triplet passes", () => {
+    const { rate, low, high } = passRate(scores(15, 15));
+    expect(rate).toBe(1);
+    expect(low).toBeCloseTo(0.796, 3);
+    expect(high).toBe(1);
+  });
+  it("keeps a real interval when every triplet fails", () => {
+    const { rate, low, high } = passRate(scores(0, 15));
+    expect(rate).toBe(0);
+    expect(low).toBe(0);
+    expect(high).toBeCloseTo(0.204, 3);
   });
   it("rejects an empty list", () => {
-    expect(() => passRate([])).toThrow();
+    expect(() => passRate([])).toThrow(/at least one/);
   });
 });

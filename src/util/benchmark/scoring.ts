@@ -47,32 +47,25 @@ export function scoreTriplet(
   };
 }
 
-/** Small seeded generator, so results files don't change between runs. */
-function mulberry32(seed: number): () => number {
-  let a = seed;
-  return () => {
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+const Z_95 = 1.959964;
 
-/** Pass rate with a 95% percentile bootstrap interval across triplets. */
-export function passRate(passed: boolean[], resamples = 2000): Interval {
+/**
+ * Pass rate with a 95% Wilson score interval. Results that repeat a base
+ * triplet aren't independent, so never pool the same baseId in one call.
+ */
+export function passRate(passed: boolean[]): Interval {
   if (passed.length === 0) throw new Error("passRate needs at least one result");
-  const random = mulberry32(1);
-  const rate = passed.filter(Boolean).length / passed.length;
-  const rates = Array.from({ length: resamples }, () => {
-    let hits = 0;
-    for (let i = 0; i < passed.length; i++) {
-      if (passed[Math.floor(random() * passed.length)]) hits++;
-    }
-    return hits / passed.length;
-  }).sort((a, b) => a - b);
+  const n = passed.length;
+  const hits = passed.filter(Boolean).length;
+  const rate = hits / n;
+  const z2 = Z_95 * Z_95;
+  const denominator = 1 + z2 / n;
+  const center = (rate + z2 / (2 * n)) / denominator;
+  const halfWidth =
+    (Z_95 * Math.sqrt((rate * (1 - rate)) / n + z2 / (4 * n * n))) / denominator;
   return {
     rate,
-    low: rates[Math.floor(resamples * 0.025)],
-    high: rates[Math.floor(resamples * 0.975)],
+    low: hits === 0 ? 0 : center - halfWidth,
+    high: hits === n ? 1 : center + halfWidth,
   };
 }
