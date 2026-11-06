@@ -22,6 +22,15 @@ export interface Triplet {
   status: "draft" | "approved" | "rejected";
   /** Judgement calls a reviewer should look at. */
   notes?: string;
+  /** An independent reviewer's verdict on the draft. */
+  critique?: Critique;
+  /** How a row entered the set, if not in the first draft. */
+  origin?: string;
+}
+
+export interface Critique {
+  verdict: "keep" | "fix" | "reject";
+  reason: string;
 }
 
 export interface TripletScore {
