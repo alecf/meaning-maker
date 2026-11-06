@@ -86,9 +86,9 @@ Disk is the tightest resource, with 23 GB free at 98% full. PAWS keeps pair simi
 
 The same model name doesn't guarantee the same vectors across hosts, because quantization, pooling and task prompts can differ.
 
-For each model on both Ollama and Workers AI, run about 100 triplets on both hosts and compare the vectors and the pass or fail verdicts. A model counts as interchangeable only if the verdicts match. Otherwise it gets two rows, or the page says live scores can differ from the heatmap.
+For each model on both Ollama and Workers AI, run about 100 triplets on both hosts and compare the vectors and the pass or fail verdicts. A verdict flip is forgiven only when the absolute margin is below `HOST_NOISE_MARGIN` (0.01) on both hosts, since a triplet that close to a tie can flip on noise. Any other flip means the model isn't interchangeable, however high its match rate. It then gets two rows, or the page says live scores can differ from the heatmap.
 
-Run on 2026-11-05 with 102 triplets: bge-large with `cls`, bge-m3, qwen3 and embeddinggemma all matched on every verdict, with a mean cross-host cosine of at least 0.9997. Each gets one row.
+Run on 2026-11-05 with 102 triplets: bge-large with `cls`, bge-m3, qwen3 and embeddinggemma all matched on every verdict, with a mean cross-host cosine of 0.99969 to 0.99999. Each gets one row. Before the main run, calibration repeats on the approved triplets at 8 sentences of context, because bare sentences don't prove this for longer text.
 
 ## Test set
 

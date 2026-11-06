@@ -634,11 +634,15 @@ Stub `globalThis.fetch` with `vi.fn()` and a small fake of `/api/ps`, `/api/tags
 - Rethrows the callback's error if the unload fails too.
 - Returns the result and warns if the unload fails, or if the model is still loaded afterwards, and gives the unload time to finish.
 - Refuses a second model while one is in use, and recovers after a failure.
+- Takes the provider, re-reads `/api/tags` after the session starts, and throws before any request if the digest differs from the provider's.
+- Sends no embed after the lock is released. With `batchSize: 1`, overlapping `embedBatch` calls under `Promise.all` must leave nothing running.
+- Finishes the request in flight before it unloads, and refuses new work once the run settles.
 
 Test the lockfile:
 
 - It's created with the `wx` flag, holds the pid, and is removed afterwards, including after a failure.
-- A lock held by a live process throws. A lock with a dead pid, or no pid, is replaced.
+- A lock held by a live process throws. A lock with a dead pid, or no pid, is renamed to a unique name, removed and retried with `wx`, so only one process clears it.
+- The lock is only removed if it still holds our pid.
 
 Test swap protection:
 
@@ -654,7 +658,7 @@ Test that `createOllamaProvider`:
 - Sends `truncate: false`.
 - Throws if a response has the wrong number of vectors.
 - Has an id that changes with the digest from `/api/tags`, prefix and options, but not with `batchSize` or `maxTokens`.
-- Throws if `/api/tags` doesn't list the model.
+- Throws if `/api/tags` doesn't list the model, or if the digest isn't a non-empty string.
 
 Test that `assertNotTruncated` throws when a text's `prompt_eval_count` reaches `maxTokens`, passes below it, and throws unless the count is a positive number.
 
@@ -666,7 +670,14 @@ Expected: FAIL, cannot find `./ollama`.
 **Step 3: Implement**
 
 ```ts
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import {
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname } from "node:path";
 import type { EmbeddingProvider } from "@/util/benchmark/types";
 import { stableStringify } from "@/util/embedding";
@@ -735,8 +746,19 @@ function acquireLock(file: string): void {
   if (isRunning(holder)) {
     throw new Error(`Ollama lock held by pid ${holder}: ${file}`);
   }
-  rmSync(file, { force: true });
+  // Only one process can rename a given lock, so only one clears it.
+  const stale = `${file}.${randomUUID()}`;
+  renameSync(file, stale);
+  rmSync(stale);
   writeLock(file);
+}
+
+function releaseLock(file: string): void {
+  try {
+    if (Number(readFileSync(file, "utf8")) === process.pid) rmSync(file);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
 }
 
 async function waitForIdle(timeoutMs: number, pollMs: number): Promise<void> {
@@ -772,6 +794,18 @@ async function unload(
   }
 }
 
+async function modelDigest(name: string): Promise<string> {
+  const { models } = await get<{ models: { name: string; digest?: unknown }[] }>(
+    "/api/tags",
+  );
+  const found = models.find((m) => m.name === withTag(name));
+  if (!found) throw new Error(`${name} isn't installed`);
+  if (typeof found.digest !== "string" || found.digest === "") {
+    throw new Error(`${name} has no digest in /api/tags`);
+  }
+  return found.digest;
+}
+
 export interface ExclusiveOptions {
   timeoutMs?: number;
   pollMs?: number;
@@ -783,7 +817,10 @@ interface Session {
   model: OllamaModel;
   /** Set once an embed is sent. Without one, there's nothing of ours to unload. */
   embedded: boolean;
-  busy: boolean;
+  /** The one call allowed at a time. */
+  inFlight?: Promise<unknown>;
+  /** Set when the run settles. No new request may start after this. */
+  closing: boolean;
 }
 
 let session: Session | undefined;
@@ -798,9 +835,12 @@ const sameModel = (a: OllamaModel, b: OllamaModel): boolean =>
  * client that loads a model between that check and the request can still force
  * a swap, so this narrows that race rather than closing it. Unloads only a
  * model this session used, and never anything else.
+ *
+ * Create the provider just before this call, so its digest is current. A model
+ * that has changed since then stops the session before any request.
  */
 export async function withExclusiveModel<T>(
-  model: OllamaModel,
+  provider: OllamaProvider,
   run: () => Promise<T>,
   {
     timeoutMs = 600_000,
@@ -811,18 +851,24 @@ export async function withExclusiveModel<T>(
 ): Promise<T> {
   if (session) throw new Error(`Already using ${session.model.name}`);
   acquireLock(lockFile);
-  const own: Session = { model, embedded: false, busy: false };
+  const { model, digest } = provider;
+  const own: Session = { model, embedded: false, closing: false };
   session = own;
   try {
     await waitForIdle(timeoutMs, pollMs);
+    if ((await modelDigest(model.name)) !== digest) {
+      throw new Error(`${model.name} changed after its provider was created`);
+    }
     try {
       return await run();
     } finally {
+      own.closing = true;
+      await own.inFlight?.catch(() => undefined);
       if (own.embedded) await unload(model.name, unloadTimeoutMs, pollMs);
     }
   } finally {
     session = undefined;
-    rmSync(lockFile, { force: true });
+    releaseLock(lockFile);
   }
 }
 
@@ -850,6 +896,9 @@ async function embedOnce(
   if (others.length > 0) {
     throw new Error(`${others.join(", ")} loaded while using ${model.name}`);
   }
+  if (session !== own || own.closing) {
+    throw new Error(`The ${model.name} session has ended`);
+  }
   own.embedded = true;
   const response = await post<EmbedResponse>("/api/embed", {
     model: model.name,
@@ -871,36 +920,33 @@ async function oneAtATime<T>(
   model: OllamaModel,
   work: (own: Session) => Promise<T>,
 ): Promise<T> {
-  if (!session || !sameModel(session.model, model)) {
+  const own = session;
+  if (!own || own.closing || !sameModel(own.model, model)) {
     throw new Error(`Use ${model.name} inside withExclusiveModel`);
   }
-  const own = session;
-  if (own.busy) throw new Error(`${model.name} already has a request in flight`);
-  own.busy = true;
-  try {
-    return await work(own);
-  } finally {
-    own.busy = false;
-  }
+  if (own.inFlight) throw new Error(`${model.name} already has a request in flight`);
+  const current = work(own).finally(() => {
+    own.inFlight = undefined;
+  });
+  own.inFlight = current;
+  return current;
 }
 
-async function modelDigest(name: string): Promise<string> {
-  const { models } = await get<{ models: { name: string; digest: string }[] }>(
-    "/api/tags",
-  );
-  const found = models.find((m) => m.name === withTag(name));
-  if (!found) throw new Error(`${name} isn't installed`);
-  return found.digest;
+export interface OllamaProvider extends EmbeddingProvider {
+  readonly model: OllamaModel;
+  readonly digest: string;
 }
 
 export async function createOllamaProvider(
   model: OllamaModel,
-): Promise<EmbeddingProvider> {
+): Promise<OllamaProvider> {
   const batchSize = model.batchSize ?? 64;
   const { name, prefix, options } = model;
   const digest = await modelDigest(name);
   return {
     id: stableStringify({ host: "ollama", name, prefix, options, digest }),
+    model,
+    digest,
     embedBatch: (texts) =>
       oneAtATime(model, async (own) => {
         const vectors: number[][] = [];
@@ -1131,14 +1177,14 @@ Expected: `data/benchmark/calibration.json` has one row per model and `ollama ps
 
 **Step 4: Review and commit**
 
-If verdicts match on at least 95% of triplets, treat the model as interchangeable. Otherwise, it gets separate rows. Stop and report to Alec if bge-large doesn't match, since it's the app's model.
+A verdict flip is forgiven only when the absolute margin is below `HOST_NOISE_MARGIN` (0.01) on both hosts. Any other flip makes the model not interchangeable, however high the match rate is, and it gets separate rows. `calibration.json` lists forgiven and unforgiven flips separately. Stop and report to Alec if bge-large isn't interchangeable, since it's the app's model.
 
 ```bash
 git add scripts/benchmark data/benchmark package.json
 git commit -m "Calibrate Ollama against Workers AI"
 ```
 
-**Result, 2026-11-05:** every model matched on all 102 triplets, so each is interchangeable and needs one row. This covers bge-large with `cls` only; the app's `mean` pooling wasn't calibrated.
+**Result, 2026-11-05:** every model matched on all 102 triplets, with no flips to forgive, so each is interchangeable and needs one row. This covers bge-large with `cls` only; the app's `mean` pooling wasn't calibrated.
 
 | Model | Mean cross-host cosine | Verdict match | Worst margin difference | Pass rate on both hosts |
 |---|---|---|---|---|
@@ -1221,7 +1267,7 @@ git commit -m "Add OpenRouter benchmark provider"
 
 **Step 1: Write `run.ts`**
 
-Load approved triplets, expand them with context under the same `baseId`, and run each model in turn. Check the cache first, and only embed what's missing. Ollama models run inside `withExclusiveModel`. Call `embedBatch` in chunks and `put` after each chunk through `embedCached`, so progress survives a failure. A provider failure or a `scoreTriplet` throw puts that model under `missing` with its error, and the run continues. Skip the cache for `batchScoped` providers such as bag-of-words, and embed and score each triplet in its own batch.
+Load approved triplets, expand them with context under the same `baseId`, and run each model in turn. Check the cache first, and only embed what's missing. Create each Ollama provider just before its session, since the provider's digest is checked when the session starts. Ollama models run inside `withExclusiveModel`. Call `embedBatch` in chunks and `put` after each chunk through `embedCached`, so progress survives a failure. A provider failure or a `scoreTriplet` throw puts that model under `missing` with its error, and the run continues. Skip the cache for `batchScoped` providers such as bag-of-words, and embed and score each triplet in its own batch.
 
 **Step 2: Test the report**
 
@@ -1229,28 +1275,32 @@ Move the aggregation into a tested function. Intervals assume independent result
 
 `results.json` holds, per model, the bare-sentence pass rate and interval overall and per category, the pass rate and interval for each other context length, and every triplet's margin. A failed model appears under `missing`, never as zero.
 
-**Step 3: Run it**
+**Step 3: Repeat calibration on longer text**
+
+Bare sentences don't prove the one-row result for longer text. Before the main run, repeat calibration on the approved triplets at 8 sentences of context for the four shared models. Apply the same `HOST_NOISE_MARGIN` rule. The expected cost is trivial: well under 1,000 neurons on bge-large and far less on the others. embeddinggemma has no listed price.
+
+**Step 4: Run it**
 
 Add `"benchmark": "node scripts/run.mjs scripts/benchmark/run.ts"` to `package.json`, then run `npm run benchmark`.
 
 Expected: `data/benchmark/results.json` is written and `ollama ps` is empty.
 
-**Step 4: Write `paws.ts`**
+**Step 5: Write `paws.ts`**
 
 Download the PAWS Wiki labelled set to `.benchmark-cache/paws/` and check its row count. For each Ollama model, embed in `withExclusiveModel`, keep only each pair's similarity, and compute ROC AUC. Save each pair's progress so a run can resume. Never write PAWS vectors to disk.
 
-**Step 5: Run PAWS overnight**
+**Step 6: Run PAWS overnight**
 
 This needs about 6 hours. Run it only when Alec says the laptop is free. Check free disk space first.
 
-**Step 6: Commit**
+**Step 7: Commit**
 
 ```bash
 git add scripts/benchmark data/benchmark package.json
 git commit -m "Run semantic sensitivity benchmark"
 ```
 
-**Step 7: Check the kill criteria and stop**
+**Step 8: Check the kill criteria and stop**
 
 Confirmed means models differ clearly and consistently by category, and bag-of-words scores far below semantic models. Killed means all semantic models score about the same, or results change randomly between sets. Compare intervals, not just point rates.
 
