@@ -63,7 +63,7 @@ async function ollamaVectors(
 ): Promise<HostVectors> {
   return withExclusiveModel(provider, async () => {
     const pending = texts.filter((text) => !cache.get(text));
-    if (pending.length > 0) await assertNotTruncated(provider.model, pending);
+    if (pending.length > 0) await assertNotTruncated(provider, pending);
     return embedCached(provider, cache, texts);
   });
 }

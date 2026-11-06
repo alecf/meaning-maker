@@ -14,6 +14,7 @@ import {
   createOllamaProvider,
   type ExclusiveOptions,
   type OllamaModel,
+  type OllamaProvider,
   withExclusiveModel,
 } from "./ollama";
 
@@ -115,13 +116,18 @@ describe("ollama", () => {
   let warn: ReturnType<typeof vi.spyOn>;
 
   const inSession = async <T>(
-    run: () => Promise<T>,
+    run: (provider: OllamaProvider) => Promise<T>,
     target = model,
     options: ExclusiveOptions = quick,
-  ): Promise<T> =>
-    withExclusiveModel(await createOllamaProvider(target), run, options);
-  const embedOne = async (): Promise<void> => {
-    const provider = await createOllamaProvider(model);
+  ): Promise<T> => {
+    const provider = await createOllamaProvider(target);
+    return withExclusiveModel(provider, () => run(provider), options);
+  };
+  const during = <T>(
+    provider: OllamaProvider,
+    run: () => Promise<T>,
+  ): Promise<T> => withExclusiveModel(provider, run, quick);
+  const embedOne = async (provider: OllamaProvider): Promise<void> => {
     await provider.embedBatch(["a"]);
   };
 
@@ -140,8 +146,8 @@ describe("ollama", () => {
   describe("withExclusiveModel", () => {
     it("runs the callback on an idle server, then unloads that model", async () => {
       const fake = fakeOllama();
-      const result = await inSession(async () => {
-        await embedOne();
+      const result = await inSession(async (provider) => {
+        await embedOne(provider);
         return "done";
       });
       expect(result).toBe("done");
@@ -172,8 +178,8 @@ describe("ollama", () => {
     it("still unloads when the callback throws", async () => {
       const fake = fakeOllama();
       await expect(
-        inSession(async () => {
-          await embedOne();
+        inSession(async (provider) => {
+          await embedOne(provider);
           throw new Error("boom");
         }),
       ).rejects.toThrow("boom");
@@ -182,8 +188,8 @@ describe("ollama", () => {
     it("rethrows the run's error when the unload fails too", async () => {
       fakeOllama({ unloadStatus: 500 });
       await expect(
-        inSession(async () => {
-          await embedOne();
+        inSession(async (provider) => {
+          await embedOne(provider);
           throw new Error("boom");
         }),
       ).rejects.toThrow("boom");
@@ -191,8 +197,8 @@ describe("ollama", () => {
     });
     it("returns the result and warns when the unload fails", async () => {
       fakeOllama({ unloadStatus: 500 });
-      const result = await inSession(async () => {
-        await embedOne();
+      const result = await inSession(async (provider) => {
+        await embedOne(provider);
         return "done";
       });
       expect(result).toBe("done");
@@ -200,8 +206,8 @@ describe("ollama", () => {
     });
     it("warns rather than throws if the model stays loaded", async () => {
       fakeOllama({ ps: [[], [], ["m:latest"]] });
-      const result = await inSession(async () => {
-        await embedOne();
+      const result = await inSession(async (provider) => {
+        await embedOne(provider);
         return "done";
       });
       expect(result).toBe("done");
@@ -390,7 +396,7 @@ describe("ollama", () => {
       const fake = fakeOllama({ ps: [[], [], ["m:latest", "other:latest"]] });
       const provider = await createOllamaProvider({ ...model, batchSize: 1 });
       await expect(
-        inSession(() => provider.embedBatch(["a", "b"])),
+        during(provider, () => provider.embedBatch(["a", "b"])),
       ).rejects.toThrow(/other:latest/);
       expect(fake.embeds()).toHaveLength(1);
       expect(fake.unloads().map((post) => post.body.model)).toEqual(["m"]);
@@ -406,42 +412,27 @@ describe("ollama", () => {
       const fake = fakeOllama();
       const provider = await createOllamaProvider(model);
       await expect(provider.embedBatch(["a"])).rejects.toThrow(/withExclusiveModel/);
-      await expect(assertNotTruncated(model, ["a"])).rejects.toThrow(
+      await expect(assertNotTruncated(provider, ["a"])).rejects.toThrow(
         /withExclusiveModel/,
       );
       expect(fake.posts).toEqual([]);
     });
-    it("refuses a session held with other options", async () => {
+    it("refuses a stale provider of the same model in a newer session", async () => {
       const fake = fakeOllama();
-      const provider = await createOllamaProvider({
-        ...model,
-        options: { num_ctx: 2048 },
-      });
+      const stale = await createOllamaProvider(model);
+      const current = await createOllamaProvider(model);
       await expect(
-        inSession(() => provider.embedBatch(["a"]), {
-          ...model,
-          options: { num_ctx: 512 },
-        }),
+        during(current, () => stale.embedBatch(["a"])),
+      ).rejects.toThrow(/withExclusiveModel/);
+      await expect(
+        during(current, () => assertNotTruncated(stale, ["a"])),
       ).rejects.toThrow(/withExclusiveModel/);
       expect(fake.embeds()).toEqual([]);
-    });
-    it("ignores option order in the session check", async () => {
-      fakeOllama();
-      const provider = await createOllamaProvider({
-        ...model,
-        options: { a: 1, b: 2 },
-      });
-      await expect(
-        inSession(() => provider.embedBatch(["a"]), {
-          ...model,
-          options: { b: 2, a: 1 },
-        }),
-      ).resolves.toHaveLength(1);
     });
     it("throws on overlapping embedBatch calls", async () => {
       const fake = fakeOllama();
       const provider = await createOllamaProvider(model);
-      await inSession(async () => {
+      await during(provider, async () => {
         const first = provider.embedBatch(["a"]);
         await expect(provider.embedBatch(["b"])).rejects.toThrow(/in flight/);
         await first;
@@ -451,7 +442,7 @@ describe("ollama", () => {
     it("takes a new call once the last one has finished", async () => {
       fakeOllama();
       const provider = await createOllamaProvider(model);
-      await inSession(async () => {
+      await during(provider, async () => {
         await provider.embedBatch(["a"]);
         await expect(provider.embedBatch(["b"])).resolves.toHaveLength(1);
       });
@@ -459,13 +450,13 @@ describe("ollama", () => {
     it("adds the task prefix to each text", async () => {
       const fake = fakeOllama();
       const provider = await createOllamaProvider({ ...model, prefix: "task: " });
-      await inSession(() => provider.embedBatch(["a", "b"]));
+      await during(provider, () => provider.embedBatch(["a", "b"]));
       expect(fake.embeds()[0].body.input).toEqual(["task: a", "task: b"]);
     });
     it("sends one request at a time, in batches of batchSize", async () => {
       const fake = fakeOllama();
       const provider = await createOllamaProvider({ ...model, batchSize: 2 });
-      const vectors = await inSession(() => provider.embedBatch(["a", "b", "c"]));
+      const vectors = await during(provider, () => provider.embedBatch(["a", "b", "c"]));
       expect(fake.embeds().map((post) => post.body.input)).toEqual([
         ["a", "b"],
         ["c"],
@@ -482,7 +473,7 @@ describe("ollama", () => {
       fakeOllama({ embeddingsPerRequest: 1 });
       const provider = await createOllamaProvider(model);
       await expect(
-        inSession(() => provider.embedBatch(["a", "b"])),
+        during(provider, () => provider.embedBatch(["a", "b"])),
       ).rejects.toThrow(/1 vectors for 2 texts/);
     });
   });
@@ -524,13 +515,13 @@ describe("ollama", () => {
     it("throws when a text reaches maxTokens", async () => {
       fakeOllama({ promptEvalCount: () => model.maxTokens });
       await expect(
-        inSession(() => assertNotTruncated(model, ["a"])),
+        inSession((provider) => assertNotTruncated(provider, ["a"])),
       ).rejects.toThrow(/reached 10 tokens/);
     });
     it("passes below maxTokens", async () => {
       fakeOllama({ promptEvalCount: () => model.maxTokens - 1 });
       await expect(
-        inSession(() => assertNotTruncated(model, ["a"])),
+        inSession((provider) => assertNotTruncated(provider, ["a"])),
       ).resolves.toBeUndefined();
     });
     it.each([
@@ -541,13 +532,13 @@ describe("ollama", () => {
     ])("throws when prompt_eval_count is %s", async (_name, count) => {
       fakeOllama({ promptEvalCount: () => count });
       await expect(
-        inSession(() => assertNotTruncated(model, ["a"])),
+        inSession((provider) => assertNotTruncated(provider, ["a"])),
       ).rejects.toThrow(/prompt_eval_count/);
     });
     it("checks the longest texts one at a time", async () => {
       const fake = fakeOllama();
       const texts = ["a", "bbbbbbb", "cc", "ddd", "eeee", "fffff", "gggggg"];
-      await inSession(() => assertNotTruncated(model, texts));
+      await inSession((provider) => assertNotTruncated(provider, texts));
       expect(fake.embeds().map((post) => post.body.input)).toEqual([
         ["bbbbbbb"],
         ["gggggg"],

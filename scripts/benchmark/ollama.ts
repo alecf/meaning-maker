@@ -142,7 +142,8 @@ export interface ExclusiveOptions {
 }
 
 interface Session {
-  model: OllamaModel;
+  /** Compared by identity, so a stale provider can't use a newer session. */
+  provider: OllamaProvider;
   /** Set once an embed is sent. Without one, there's nothing of ours to unload. */
   embedded: boolean;
   /** The one call allowed at a time. */
@@ -152,10 +153,6 @@ interface Session {
 }
 
 let session: Session | undefined;
-
-const sameModel = (a: OllamaModel, b: OllamaModel): boolean =>
-  a.name === b.name &&
-  stableStringify(a.options ?? {}) === stableStringify(b.options ?? {});
 
 /**
  * The only way to use a model. The lockfile stops our own runs from colliding,
@@ -177,10 +174,10 @@ export async function withExclusiveModel<T>(
     lockFile = LOCK_FILE,
   }: ExclusiveOptions = {},
 ): Promise<T> {
-  if (session) throw new Error(`Already using ${session.model.name}`);
+  if (session) throw new Error(`Already using ${session.provider.model.name}`);
   acquireLock(lockFile);
   const { model, digest } = provider;
-  const own: Session = { model, embedded: false, closing: false };
+  const own: Session = { provider, embedded: false, closing: false };
   session = own;
   try {
     await waitForIdle(timeoutMs, pollMs);
@@ -245,14 +242,15 @@ async function embedOnce(
 
 /** Holds the session's one slot, so calls can't overlap between requests. */
 async function oneAtATime<T>(
-  model: OllamaModel,
+  provider: OllamaProvider,
   work: (own: Session) => Promise<T>,
 ): Promise<T> {
+  const { name } = provider.model;
   const own = session;
-  if (!own || own.closing || !sameModel(own.model, model)) {
-    throw new Error(`Use ${model.name} inside withExclusiveModel`);
+  if (!own || own.closing || own.provider !== provider) {
+    throw new Error(`Use ${name} inside withExclusiveModel`);
   }
-  if (own.inFlight) throw new Error(`${model.name} already has a request in flight`);
+  if (own.inFlight) throw new Error(`${name} already has a request in flight`);
   const current = work(own).finally(() => {
     own.inFlight = undefined;
   });
@@ -271,12 +269,12 @@ export async function createOllamaProvider(
   const batchSize = model.batchSize ?? 64;
   const { name, prefix, options } = model;
   const digest = await modelDigest(name);
-  return {
+  const provider: OllamaProvider = {
     id: stableStringify({ host: "ollama", name, prefix, options, digest }),
     model,
     digest,
     embedBatch: (texts) =>
-      oneAtATime(model, async (own) => {
+      oneAtATime(provider, async (own) => {
         const vectors: number[][] = [];
         for (let i = 0; i < texts.length; i += batchSize) {
           const { embeddings } = await embedOnce(
@@ -289,6 +287,7 @@ export async function createOllamaProvider(
         return vectors;
       }),
   };
+  return provider;
 }
 
 /**
@@ -296,11 +295,12 @@ export async function createOllamaProvider(
  * requests. Checks the longest few texts, which is where truncation would hit.
  */
 export function assertNotTruncated(
-  model: OllamaModel,
+  provider: OllamaProvider,
   texts: string[],
 ): Promise<void> {
+  const { model } = provider;
   const longest = [...texts].sort((a, b) => b.length - a.length).slice(0, 5);
-  return oneAtATime(model, async (own) => {
+  return oneAtATime(provider, async (own) => {
     for (const text of longest) {
       const { prompt_eval_count: tokens } = await embedOnce(own, model, [text]);
       if (typeof tokens !== "number" || !(tokens > 0)) {
