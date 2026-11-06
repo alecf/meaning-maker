@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Triplet } from "@/util/benchmark/types";
-import { compareHosts } from "./calibration";
+import { compareHosts, HOST_NOISE_MARGIN } from "./calibration";
 
 const triplet = (id: string): Triplet => ({
   id,
@@ -28,6 +28,12 @@ const pass = [1, 0];
 const near = [1, 0.1];
 const far = [0, 1];
 
+/** A unit vector with this cosine similarity to `pass`. */
+const withSimilarity = (cosine: number): number[] => [
+  cosine,
+  Math.sqrt(1 - cosine * cosine),
+];
+
 describe("compareHosts", () => {
   it("reports identical hosts as interchangeable", () => {
     const host = new Map(vectors("a", pass, near, far));
@@ -35,7 +41,8 @@ describe("compareHosts", () => {
     expect(row.meanHostCosine).toBeCloseTo(1);
     expect(row.verdictMatchRate).toBe(1);
     expect(row.worstMarginDifference).toBe(0);
-    expect(row.mismatches).toEqual([]);
+    expect(row.forgivenMismatches).toEqual([]);
+    expect(row.unforgivenMismatches).toEqual([]);
     expect(row.interchangeable).toBe(true);
   });
   it("counts a verdict that differs between hosts", () => {
@@ -49,7 +56,7 @@ describe("compareHosts", () => {
     ]);
     const row = compareHosts([triplet("a"), triplet("b")], workers, ollama);
     expect(row.verdictMatchRate).toBe(0.5);
-    expect(row.mismatches).toEqual(["b"]);
+    expect(row.unforgivenMismatches).toEqual(["b"]);
     expect(row.interchangeable).toBe(false);
     expect(row.worstMarginTriplet).toBe("b");
     expect(row.worstMarginDifference).toBeGreaterThan(1);
@@ -62,17 +69,45 @@ describe("compareHosts", () => {
     const row = compareHosts([triplet("a")], workers, ollama);
     expect(row.meanHostCosine).toBeCloseTo(2 / 3);
   });
-  it("is interchangeable at exactly 95% matching verdicts", () => {
-    const ids = Array.from({ length: 20 }, (_, i) => `t${i}`);
+  it("keeps a noise-level flip from blocking interchangeability", () => {
+    const workers = new Map(vectors("a", pass, withSimilarity(1), withSimilarity(0.998)));
+    const ollama = new Map(vectors("a", pass, withSimilarity(0.998), withSimilarity(1)));
+    const row = compareHosts([triplet("a")], workers, ollama);
+    expect(row.forgivenMismatches).toEqual(["a"]);
+    expect(row.unforgivenMismatches).toEqual([]);
+    expect(row.interchangeable).toBe(true);
+  });
+  it("rejects a flip that's large on one host only", () => {
+    const workers = new Map(vectors("a", pass, withSimilarity(1), withSimilarity(0.9)));
+    const ollama = new Map(vectors("a", pass, withSimilarity(0.998), withSimilarity(1)));
+    const row = compareHosts([triplet("a")], workers, ollama);
+    expect(row.forgivenMismatches).toEqual([]);
+    expect(row.unforgivenMismatches).toEqual(["a"]);
+    expect(row.interchangeable).toBe(false);
+  });
+  it("rejects a flip just past the noise limit", () => {
+    const margin = HOST_NOISE_MARGIN * 1.01;
+    const workers = new Map(vectors("a", pass, withSimilarity(1), withSimilarity(1 - margin / 2)));
+    const ollama = new Map(vectors("a", pass, withSimilarity(1 - margin), withSimilarity(1)));
+    const row = compareHosts([triplet("a")], workers, ollama);
+    expect(row.unforgivenMismatches).toEqual(["a"]);
+  });
+  it("isn't rescued by a high match rate: 5 large flips out of 100", () => {
+    const ids = Array.from({ length: 100 }, (_, i) => `t${i}`);
     const workers = new Map(ids.flatMap((id) => vectors(id, pass, near, far)));
     const ollama = new Map(
       ids.flatMap((id, i) =>
-        i === 0 ? vectors(id, pass, far, near) : vectors(id, pass, near, far),
+        i < 5 ? vectors(id, pass, far, near) : vectors(id, pass, near, far),
       ),
     );
-    const row = compareHosts(ids.map(triplet), workers, ollama);
+    const row = compareHosts(
+      ids.map((id) => ({ ...triplet(id), category: "swapped-roles" })),
+      workers,
+      ollama,
+    );
     expect(row.verdictMatchRate).toBe(0.95);
-    expect(row.interchangeable).toBe(true);
+    expect(row.unforgivenMismatches).toHaveLength(5);
+    expect(row.interchangeable).toBe(false);
   });
   it("throws if the hosts give different vector lengths", () => {
     const workers = new Map(vectors("a", [1, 0], [1, 0.1], [0, 1]));

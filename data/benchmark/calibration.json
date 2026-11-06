@@ -20,7 +20,8 @@
       "low": 0.673717980949697,
       "high": 0.8364790682100506
     },
-    "mismatches": [],
+    "forgivenMismatches": [],
+    "unforgivenMismatches": [],
     "interchangeable": true
   },
   {
@@ -44,7 +45,8 @@
       "low": 0.5807104308299592,
       "high": 0.7594209352765394
     },
-    "mismatches": [],
+    "forgivenMismatches": [],
+    "unforgivenMismatches": [],
     "interchangeable": true
   },
   {
@@ -68,7 +70,8 @@
       "low": 0.4047444716850327,
       "high": 0.5952555283149673
     },
-    "mismatches": [],
+    "forgivenMismatches": [],
+    "unforgivenMismatches": [],
     "interchangeable": true
   },
   {
@@ -92,7 +95,8 @@
       "low": 0.673717980949697,
       "high": 0.8364790682100506
     },
-    "mismatches": [],
+    "forgivenMismatches": [],
+    "unforgivenMismatches": [],
     "interchangeable": true
   }
 ]

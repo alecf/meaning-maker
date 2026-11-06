@@ -2,8 +2,11 @@ import { passRate, scoreTriplet } from "@/util/benchmark/scoring";
 import type { Interval, Triplet, TripletScore } from "@/util/benchmark/types";
 import { cosine_similarity } from "@/util/util";
 
-/** Below this share of matching verdicts, a model gets a row per host. */
-const MIN_VERDICT_MATCH = 0.95;
+/**
+ * A verdict flip only counts as host noise if the margin is below this on both
+ * hosts. Any other flip means a model needs a row per host.
+ */
+export const HOST_NOISE_MARGIN = 0.01;
 
 export type HostVectors = Map<string, number[]>;
 
@@ -17,8 +20,10 @@ export interface HostComparison {
   worstMarginTriplet: string;
   workersAi: Interval;
   ollama: Interval;
-  /** Triplets whose verdict differs between hosts. */
-  mismatches: string[];
+  /** Verdict flips with a margin below HOST_NOISE_MARGIN on both hosts. */
+  forgivenMismatches: string[];
+  /** Every other verdict flip. Any of these rules out one row. */
+  unforgivenMismatches: string[];
   interchangeable: boolean;
 }
 
@@ -60,12 +65,18 @@ export function compareHosts(
   const workersScores = scoreAll(triplets, workersAi);
   const ollamaScores = scoreAll(triplets, ollama);
 
-  const mismatches: string[] = [];
+  const forgivenMismatches: string[] = [];
+  const unforgivenMismatches: string[] = [];
   let worstMarginDifference = -1;
   let worstMarginTriplet = "";
   workersScores.forEach((score, i) => {
     const other = ollamaScores[i];
-    if (score.passed !== other.passed) mismatches.push(score.id);
+    if (score.passed !== other.passed) {
+      const isNoise =
+        Math.abs(score.margin) < HOST_NOISE_MARGIN &&
+        Math.abs(other.margin) < HOST_NOISE_MARGIN;
+      (isNoise ? forgivenMismatches : unforgivenMismatches).push(score.id);
+    }
     const difference = Math.abs(score.margin - other.margin);
     if (difference > worstMarginDifference) {
       worstMarginDifference = difference;
@@ -73,18 +84,19 @@ export function compareHosts(
     }
   });
 
-  const verdictMatchRate = 1 - mismatches.length / triplets.length;
+  const mismatches = forgivenMismatches.length + unforgivenMismatches.length;
   return {
     triplets: triplets.length,
     texts: texts.length,
     dimensions: vectorFor(workersAi, texts[0]).length,
     meanHostCosine: cosines.reduce((sum, c) => sum + c, 0) / cosines.length,
-    verdictMatchRate,
+    verdictMatchRate: 1 - mismatches / triplets.length,
     worstMarginDifference,
     worstMarginTriplet,
     workersAi: passRate(workersScores.map((s) => s.passed)),
     ollama: passRate(ollamaScores.map((s) => s.passed)),
-    mismatches,
-    interchangeable: verdictMatchRate >= MIN_VERDICT_MATCH,
+    forgivenMismatches,
+    unforgivenMismatches,
+    interchangeable: unforgivenMismatches.length === 0,
   };
 }
