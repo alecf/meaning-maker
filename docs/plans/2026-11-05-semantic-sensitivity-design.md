@@ -59,7 +59,7 @@ Local runs share one laptop, so the runner must never make Ollama swap models:
 - Run one model at a time, with one request in flight. Finish all of a model's texts before moving on, and never interleave models.
 - Before starting a model, check `/api/ps`. If another model is loaded, wait for it to go. Don't unload something the runner didn't load.
 - After a model finishes, unload it with `keep_alive: 0` and confirm `/api/ps` is empty.
-- Read `prompt_eval_count` on every response and stop if a text hit the model's limit, because Ollama truncates silently.
+- Before a run, embed the longest texts one at a time and stop if `prompt_eval_count` reaches the model's limit. Ollama truncates silently and only reports token totals per batch.
 - Use each model's documented task prefixes, and record them with the results.
 
 Measured on 2026-11-05 on an M2 Max with 32 GB, at 53 to 125 short texts per second:
@@ -77,7 +77,7 @@ Measured on 2026-11-05 on an M2 Max with 32 GB, at 53 to 125 short texts per sec
 
 The core set is about 1,080 texts per model, which takes under 30 seconds per model. PAWS at about 200,000 texts would take about 6 hours across all eight, so it stays an overnight job. The 8-sentence paragraphs came to about 145 tokens, under every limit.
 
-Disk is the tightest resource, with 23 GB free at 98% full. Set `num_ctx` on qwen3 to cut its memory use.
+Disk is the tightest resource, with 23 GB free at 98% full. PAWS keeps pair similarities only, never vectors. Set `num_ctx` on qwen3 to cut its memory use.
 
 ## Calibration
 
