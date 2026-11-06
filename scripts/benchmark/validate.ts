@@ -4,6 +4,9 @@ import { CATEGORIES, type Category, type Triplet } from "@/util/benchmark/types"
 const MAX_LENGTH_DIFFERENCE = 0.3;
 const CONTEXT_SENTENCES = 8;
 
+const STATUSES: readonly string[] = ["draft", "approved", "rejected"];
+const CONTEXT_LENGTHS: readonly number[] = [0, 1, 3, 8];
+
 const TEXT_FIELDS = ["anchor", "paraphrase", "edit"] as const;
 const REQUIRED_FIELDS = ["id", "baseId", ...TEXT_FIELDS] as const;
 
@@ -50,6 +53,12 @@ export function validateTriplet(triplet: Triplet): string[] {
   if (!CATEGORIES.includes(triplet.category as Category)) {
     problems.push(`unknown category ${triplet.category}`);
   }
+  if (!STATUSES.includes(triplet.status)) {
+    problems.push(`unknown status ${triplet.status}`);
+  }
+  if (!CONTEXT_LENGTHS.includes(triplet.contextSentences)) {
+    problems.push(`unknown contextSentences ${triplet.contextSentences}`);
+  }
   for (const field of TEXT_FIELDS) {
     const text = triplet[field];
     if (isEmpty(text)) continue;
@@ -61,7 +70,7 @@ export function validateTriplet(triplet: Triplet): string[] {
   const anchor = tokenize(triplet.anchor);
   const paraphrase = tokenize(triplet.paraphrase);
   const edit = tokenize(triplet.edit);
-  if (new Set(TEXT_FIELDS.map((field) => triplet[field])).size < 3) {
+  if (new Set([anchor, paraphrase, edit].map((t) => t.join(" "))).size < 3) {
     problems.push("two of the texts are identical");
   }
   if (lengthsDiffer(paraphrase, edit)) {
@@ -84,6 +93,7 @@ export function validateTriplets(triplets: Triplet[]): string[] {
   const ids = new Set<string>();
   const bases = new Map<string, Triplet>();
   const contexts = new Set<string>();
+  const anchors = new Map<string, Triplet>();
   for (const triplet of triplets) {
     const { id, baseId, category, anchor, contextSentences } = triplet;
     if (ids.has(id)) problems.push(`${id}: duplicated id`);
@@ -100,6 +110,13 @@ export function validateTriplets(triplets: Triplet[]): string[] {
       problems.push(`${id}: baseId ${baseId} repeats contextSentences ${contextSentences}`);
     }
     contexts.add(context);
+
+    const key = tokenize(anchor ?? "").join(" ");
+    const first = anchors.get(key);
+    if (first && first.baseId !== baseId) {
+      problems.push(`${id}: anchor repeats ${first.id}`);
+    }
+    if (!first) anchors.set(key, triplet);
   }
   return problems;
 }

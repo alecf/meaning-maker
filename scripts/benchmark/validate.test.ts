@@ -113,6 +113,27 @@ describe("validateTriplet", () => {
       expect.stringMatching(/identical/),
     );
   });
+  it("compares texts by tokens for the identical rule", () => {
+    expect(
+      validateTriplet({ ...valid, edit: "THE FERRY runs on public holidays!" }),
+    ).toContainEqual(expect.stringMatching(/identical/));
+  });
+  it("flags an unknown status", () => {
+    expect(
+      validateTriplet({ ...valid, status: "maybe" as Triplet["status"] }),
+    ).toContainEqual(expect.stringMatching(/unknown status/));
+  });
+  it.each([0, 1, 3, 8] as const)("accepts contextSentences %i", (contextSentences) => {
+    expect(validateTriplet({ ...valid, contextSentences })).toEqual([]);
+  });
+  it("flags any other contextSentences", () => {
+    expect(
+      validateTriplet({
+        ...valid,
+        contextSentences: 2 as Triplet["contextSentences"],
+      }),
+    ).toContainEqual(expect.stringMatching(/unknown contextSentences 2/));
+  });
   it("flags a curly apostrophe, so one style is used throughout", () => {
     expect(
       validateTriplet({ ...valid, anchor: "The ferry’s route runs on holidays." }),
@@ -150,6 +171,12 @@ describe("validateTriplets", () => {
     const other = { ...at(3, "b"), anchor: "The ferry stops running in winter." };
     expect(validateTriplets([at(0, "a"), other])).toContainEqual(
       expect.stringMatching(/differs in category or anchor/),
+    );
+  });
+  it("flags an anchor repeated across baseIds", () => {
+    const other = { ...at(0, "b"), baseId: "other", anchor: `${valid.anchor.toUpperCase()}` };
+    expect(validateTriplets([at(0, "a"), other])).toContainEqual(
+      expect.stringMatching(/b: anchor repeats a/),
     );
   });
   it("flags a repeated contextSentences value within a baseId", () => {
