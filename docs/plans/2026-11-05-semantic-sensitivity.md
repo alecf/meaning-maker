@@ -52,6 +52,8 @@ export interface Triplet {
   /** Sentences of neutral context added around all three; 0 for bare sentences. */
   contextSentences: 0 | 1 | 3 | 8;
   status: "draft" | "approved" | "rejected";
+  /** Judgement calls a reviewer should look at. */
+  notes?: string;
 }
 
 export interface TripletScore {
@@ -323,7 +325,7 @@ git commit -m "Add Wilson pass rates"
 
 ```ts
 import { describe, expect, it } from "vitest";
-import { createBagOfWordsProvider } from "./bagOfWords";
+import { createBagOfWordsProvider, tokenize } from "./bagOfWords";
 import { scoreTriplet } from "./scoring";
 
 describe("bag of words", () => {
@@ -348,6 +350,9 @@ describe("bag of words", () => {
   });
   it("is marked as batch-scoped", () => {
     expect(createBagOfWordsProvider().batchScoped).toBe(true);
+  });
+  it("exposes its tokenizer", () => {
+    expect(tokenize("The Dog's 3.5 'kg'")).toEqual(["the", "dog's", "3.5", "kg"]);
   });
   it("gives vectors of the same length within a batch", async () => {
     const [a, b] = await createBagOfWordsProvider().embedBatch(["one two", "three"]);
@@ -441,7 +446,7 @@ const normalize = (text: string): string =>
     .replaceAll("−", "-")
     .toLowerCase();
 
-const words = (text: string): string[] =>
+export const tokenize = (text: string): string[] =>
   (normalize(text).match(TOKEN) ?? [])
     .map((token) => token.replace(/^'+|'+$/g, ""))
     .filter((token) => token !== "");
@@ -452,11 +457,11 @@ export function createBagOfWordsProvider(): EmbeddingProvider {
     id: "bag-of-words",
     batchScoped: true,
     async embedBatch(texts: string[]): Promise<number[][]> {
-      const vocabulary = [...new Set(texts.flatMap(words))];
+      const vocabulary = [...new Set(texts.flatMap(tokenize))];
       const index = new Map(vocabulary.map((word, i) => [word, i]));
       return texts.map((text) => {
         const vector = new Array<number>(vocabulary.length).fill(0);
-        for (const word of words(text)) vector[index.get(word) as number]++;
+        for (const word of tokenize(text)) vector[index.get(word) as number]++;
         return vector;
       });
     },
@@ -1204,21 +1209,29 @@ The cosines also suggest Workers AI adds no prompt of its own: not to qwen3's `t
 - Create: `data/benchmark/context-sentences.json`
 - Create: `scripts/benchmark/validate.ts`
 - Test: `scripts/benchmark/validate.test.ts`
+- Test: `scripts/benchmark/triplets.test.ts`
 
 **Step 1: Write the validator with tests**
 
-`validateTriplet` returns a list of problems:
+`validateTriplet` returns a list of problems for one row, and `validateTriplets` adds the rules that span rows:
 
-- Paraphrase and edit lengths differ by more than 30%.
+- Paraphrase and edit lengths differ by more than 30%, measured in tokens against the longer text.
 - A `swapped-roles` edit doesn't use the same words as the anchor.
-- The paraphrase has the same words as the anchor with one word changed.
+- The paraphrase has the same words as the anchor with at most one word out and one in, in any order.
 - Any field is empty, including `baseId`, or the id is duplicated.
 - A text produces no bag-of-words tokens. `scoreTriplet` would throw on its zero vector and put bag-of-words under `missing`.
 - Rows that share a `baseId` differ in category or anchor, or repeat a `contextSentences` value.
+- The category is unknown, two of the texts are identical, or a text has a curly apostrophe.
+
+`validateContextSentences` needs at least 8 distinct sentences, each with tokens. `triplets.test.ts` runs both over the real data files.
 
 **Step 2: Draft about 130 triplets across the six categories**
 
-Keep `status: "draft"`. Write an independent critique of each one, and record the reason for any flag.
+Keep `status: "draft"`, with about 22 per category, and record judgement problems in `notes`. Fill `context-sentences.json` with neutral filler, unrelated to the triplets.
+
+Selection rests on meaning and construction alone. Never embed the drafts with any model, and never use a model's score to choose or drop a triplet, because that would bias the benchmark.
+
+A separate reviewer writes an independent critique of each one, and records the reason for any flag. The drafter doesn't critique their own drafts.
 
 **Step 3: Publish the shortlist for review**
 
