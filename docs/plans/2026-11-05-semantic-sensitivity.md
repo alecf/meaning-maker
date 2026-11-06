@@ -42,6 +42,8 @@ export type Category = (typeof CATEGORIES)[number];
 
 export interface Triplet {
   id: string;
+  /** Shared by every context length of one base triplet. Never pool it in one interval. */
+  baseId: string;
   category: Category;
   anchor: string;
   paraphrase: string;
@@ -55,7 +57,7 @@ export interface TripletScore {
   id: string;
   paraphraseSimilarity: number;
   editSimilarity: number;
-  /** paraphraseSimilarity - editSimilarity. Positive means a pass. */
+  /** paraphraseSimilarity - editSimilarity. A pass must beat TIE_TOLERANCE. */
   margin: number;
   passed: boolean;
 }
@@ -69,6 +71,11 @@ export interface Interval {
 export interface EmbeddingProvider {
   /** Stable identity, including pooling and task prefix. Used in cache keys. */
   readonly id: string;
+  /**
+   * Vectors are only comparable within one embedBatch call, so callers must
+   * not cache them or split a triplet across batches.
+   */
+  readonly batchScoped?: boolean;
   embedBatch(texts: string[]): Promise<number[][]>;
 }
 ```
@@ -90,19 +97,7 @@ git commit -m "Add benchmark types"
 
 ```ts
 import { describe, expect, it } from "vitest";
-import { cosine, scoreTriplet } from "./scoring";
-
-describe("cosine", () => {
-  it("is 1 for parallel vectors", () => {
-    expect(cosine([1, 2], [2, 4])).toBeCloseTo(1);
-  });
-  it("is 0 for orthogonal vectors", () => {
-    expect(cosine([1, 0], [0, 1])).toBeCloseTo(0);
-  });
-  it("is 0 rather than NaN for a zero vector", () => {
-    expect(cosine([0, 0], [1, 1])).toBe(0);
-  });
-});
+import { scoreTriplet, TIE_TOLERANCE } from "./scoring";
 
 describe("scoreTriplet", () => {
   it("passes when the paraphrase is closer", () => {
@@ -116,6 +111,36 @@ describe("scoreTriplet", () => {
   it("counts a tie as a fail", () => {
     expect(scoreTriplet("t", [1, 0], [1, 1], [1, 1]).passed).toBe(false);
   });
+  it("reports cosine similarity to the anchor", () => {
+    const score = scoreTriplet("t", [1, 2], [2, 4], [-2, 1]);
+    expect(score.paraphraseSimilarity).toBeCloseTo(1);
+    expect(score.editSimilarity).toBeCloseTo(0);
+  });
+  it("counts a margin within the tolerance as a tie", () => {
+    const score = scoreTriplet("t", [1, 0], [1, 0], [1, 0.0005]);
+    expect(score.margin).toBeGreaterThan(0);
+    expect(score.margin).toBeLessThan(TIE_TOLERANCE);
+    expect(score.passed).toBe(false);
+  });
+  it("passes a margin just beyond the tolerance", () => {
+    const score = scoreTriplet("t", [1, 0], [1, 0], [1, 0.002]);
+    expect(score.margin).toBeGreaterThan(TIE_TOLERANCE);
+    expect(score.passed).toBe(true);
+  });
+
+  it.each<[string, number[], number[], number[]]>([
+    ["a zero edit vector", [1, 0], [1, 0], [0, 0]],
+    ["a zero anchor vector", [0, 0], [1, 0], [0, 1]],
+    ["a vector whose norm underflows to zero", [1, 0], [1e-200, 0], [0, 1]],
+    ["a longer paraphrase", [1, 0], [1, 0, 9, 9, 9], [0.9, 0.1]],
+    ["a shorter edit", [1, 0, 1], [1, 0, 1], [1, 0]],
+    ["empty vectors", [], [], []],
+    ["NaN", [1, 0], [Number.NaN, 0], [0, 1]],
+    ["Infinity", [1, 0], [1, 0], [Number.POSITIVE_INFINITY, 1]],
+    ["a similarity that overflows", [1e200, 1e200], [1e200, 1e200], [0, 1]],
+  ])("rejects %s", (_name, anchor, paraphrase, edit) => {
+    expect(() => scoreTriplet("t", anchor, paraphrase, edit)).toThrow(/Triplet t/);
+  });
 });
 ```
 
@@ -126,31 +151,56 @@ Expected: FAIL, cannot find `./scoring`.
 
 **Step 3: Implement**
 
+Reuse `cosine_similarity` from `src/util/util.ts`, which has no imports of its own. It uses the shorter vector's length and returns 0 for a zero vector, so `scoreTriplet` validates first.
+
 ```ts
+import { cosine_similarity } from "../util";
 import type { TripletScore } from "./types";
 
-export function cosine(a: number[], b: number[]): number {
-  let ab = 0;
-  let aa = 0;
-  let bb = 0;
-  for (let i = 0; i < a.length; i++) {
-    ab += a[i] * b[i];
-    aa += a[i] * a[i];
-    bb += b[i] * b[i];
+/** Vectors are cached as Float32, so smaller margins are rounding, not signal. */
+export const TIE_TOLERANCE = 1e-6;
+
+function assertScorable(id: string, vectors: number[][]): void {
+  const length = vectors[0].length;
+  for (const vector of vectors) {
+    if (vector.length === 0 || vector.length !== length) {
+      throw new Error(`Triplet ${id}: vectors must share a non-zero length`);
+    }
+    if (!vector.every(Number.isFinite)) {
+      throw new Error(`Triplet ${id}: vector has a non-finite element`);
+    }
+    if (vector.reduce((sum, x) => sum + x * x, 0) === 0) {
+      throw new Error(`Triplet ${id}: vector has zero norm`);
+    }
   }
-  return aa === 0 || bb === 0 ? 0 : ab / Math.sqrt(aa * bb);
 }
 
+function similarity(id: string, a: number[], b: number[]): number {
+  const value = cosine_similarity(a, b);
+  if (!Number.isFinite(value)) {
+    throw new Error(`Triplet ${id}: similarity is not finite`);
+  }
+  return value;
+}
+
+/** Throws on vectors it can't score, so a bad model is missing, not failed. */
 export function scoreTriplet(
   id: string,
   anchor: number[],
   paraphrase: number[],
   edit: number[],
 ): TripletScore {
-  const paraphraseSimilarity = cosine(anchor, paraphrase);
-  const editSimilarity = cosine(anchor, edit);
+  assertScorable(id, [anchor, paraphrase, edit]);
+  const paraphraseSimilarity = similarity(id, anchor, paraphrase);
+  const editSimilarity = similarity(id, anchor, edit);
   const margin = paraphraseSimilarity - editSimilarity;
-  return { id, paraphraseSimilarity, editSimilarity, margin, passed: margin > 0 };
+  return {
+    id,
+    paraphraseSimilarity,
+    editSimilarity,
+    margin,
+    passed: margin > TIE_TOLERANCE,
+  };
 }
 ```
 
@@ -189,14 +239,25 @@ describe("passRate", () => {
     expect(low).toBeLessThan(rate);
     expect(high).toBeGreaterThan(rate);
   });
-  it("is deterministic", () => {
-    expect(passRate(scores(7, 15))).toEqual(passRate(scores(7, 15)));
+  it("gives the Wilson interval for a mixed result", () => {
+    const { low, high } = passRate(scores(60, 100));
+    expect(low).toBeCloseTo(0.502, 3);
+    expect(high).toBeCloseTo(0.691, 3);
   });
-  it("collapses when every triplet ties at zero", () => {
-    expect(passRate(scores(0, 15))).toEqual({ rate: 0, low: 0, high: 0 });
+  it("keeps a real interval when every triplet passes", () => {
+    const { rate, low, high } = passRate(scores(15, 15));
+    expect(rate).toBe(1);
+    expect(low).toBeCloseTo(0.796, 3);
+    expect(high).toBe(1);
+  });
+  it("keeps a real interval when every triplet fails", () => {
+    const { rate, low, high } = passRate(scores(0, 15));
+    expect(rate).toBe(0);
+    expect(low).toBe(0);
+    expect(high).toBeCloseTo(0.204, 3);
   });
   it("rejects an empty list", () => {
-    expect(() => passRate([])).toThrow();
+    expect(() => passRate([])).toThrow(/at least one/);
   });
 });
 ```
@@ -209,40 +270,31 @@ Expected: FAIL, `passRate` is not exported.
 **Step 3: Implement**
 
 ```ts
-import type { Interval, TripletScore } from "./types";
+const Z_95 = 1.959964;
 
-/** Small seeded generator, so results files don't change between runs. */
-function mulberry32(seed: number): () => number {
-  let a = seed;
-  return () => {
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-/** Pass rate with a 95% percentile bootstrap interval across triplets. */
-export function passRate(passed: boolean[], resamples = 2000): Interval {
+/**
+ * Pass rate with a 95% Wilson score interval. Results that repeat a base
+ * triplet aren't independent, so never pool the same baseId in one call.
+ */
+export function passRate(passed: boolean[]): Interval {
   if (passed.length === 0) throw new Error("passRate needs at least one result");
-  const random = mulberry32(1);
-  const rate = passed.filter(Boolean).length / passed.length;
-  const rates = Array.from({ length: resamples }, () => {
-    let hits = 0;
-    for (let i = 0; i < passed.length; i++) {
-      if (passed[Math.floor(random() * passed.length)]) hits++;
-    }
-    return hits / passed.length;
-  }).sort((a, b) => a - b);
+  const n = passed.length;
+  const hits = passed.filter(Boolean).length;
+  const rate = hits / n;
+  const z2 = Z_95 * Z_95;
+  const denominator = 1 + z2 / n;
+  const center = (rate + z2 / (2 * n)) / denominator;
+  const halfWidth =
+    (Z_95 * Math.sqrt((rate * (1 - rate)) / n + z2 / (4 * n * n))) / denominator;
   return {
     rate,
-    low: rates[Math.floor(resamples * 0.025)],
-    high: rates[Math.floor(resamples * 0.975)],
+    low: hits === 0 ? 0 : center - halfWidth,
+    high: hits === n ? 1 : center + halfWidth,
   };
 }
 ```
 
-Merge the `import type` line with the existing one from Task 2.
+Merge both imports with the existing ones from Task 2. Use a Wilson score interval, not a bootstrap: a bootstrap collapses to zero width at 0/15 and 15/15.
 
 **Step 4: Run it to confirm it passes**
 
@@ -253,7 +305,7 @@ Expected: PASS.
 
 ```bash
 git add src/util/benchmark/scoring.ts src/util/benchmark/scoring.test.ts
-git commit -m "Add bootstrap pass rates"
+git commit -m "Add Wilson pass rates"
 ```
 
 ### Task 4: Bag-of-words baseline
@@ -281,9 +333,55 @@ describe("bag of words", () => {
     expect(score.editSimilarity).toBeCloseTo(1);
     expect(score.passed).toBe(false);
   });
+  it("fails an exact tie between the paraphrase and the edit", async () => {
+    const [a, p, e] = await createBagOfWordsProvider().embedBatch([
+      "Every tall nurse quietly helped young patients yesterday.",
+      "One nurse helped those patients during her morning shift.",
+      "The tall nurse ignored the young patients at the door.",
+    ]);
+    expect(scoreTriplet("t", a, p, e).passed).toBe(false);
+  });
+  it("is marked as batch-scoped", () => {
+    expect(createBagOfWordsProvider().batchScoped).toBe(true);
+  });
   it("gives vectors of the same length within a batch", async () => {
     const [a, b] = await createBagOfWordsProvider().embedBatch(["one two", "three"]);
     expect(a.length).toBe(b.length);
+  });
+
+  const vectorsOf = (...texts: string[]): Promise<number[][]> =>
+    createBagOfWordsProvider().embedBatch(texts);
+
+  it("treats curly and straight apostrophes the same", async () => {
+    const [curly, straight] = await vectorsOf(
+      "Tom\u2019s dog bit Sam\u2019s cat.",
+      "Tom's dog bit Sam's cat.",
+    );
+    expect(curly).toEqual(straight);
+  });
+  it("normalizes composed and decomposed letters", async () => {
+    const [composed, decomposed] = await vectorsOf("caf\u00e9", "cafe\u0301");
+    expect(composed).toEqual(decomposed);
+  });
+  it("ignores quoting apostrophes around a word", async () => {
+    const [quoted, bare] = await vectorsOf("'dog'", "dog");
+    expect(quoted).toEqual(bare);
+  });
+  it("drops a stray apostrophe", async () => {
+    const [stray, bare] = await vectorsOf("dog ' cat", "dog cat");
+    expect(stray).toEqual(bare);
+  });
+  it.each([
+    ["decimals", "3.5", "5.3"],
+    ["signs", "-5", "5"],
+    ["currencies", "$5", "\u20ac5"],
+  ])("keeps %s in numbers apart", async (_name, first, second) => {
+    const [a, b] = await vectorsOf(first, second);
+    expect(a).not.toEqual(b);
+  });
+  it("leaves sentence punctuation off a number", async () => {
+    const [ending, bare] = await vectorsOf("It cost 5.", "It cost 5");
+    expect(ending).toEqual(bare);
   });
 });
 ```
@@ -298,13 +396,19 @@ Expected: FAIL, cannot find `./bagOfWords`.
 ```ts
 import type { EmbeddingProvider } from "./types";
 
+/** Keeps numbers whole, with sign, currency and decimals, so edits to them show. */
+const TOKEN = /[$€£-]?\d+(?:[.,]\d+)*|[\p{L}\p{N}']+/gu;
+
 const words = (text: string): string[] =>
-  text.toLowerCase().match(/[\p{L}\p{N}']+/gu) ?? [];
+  (text.normalize("NFC").replaceAll("\u2019", "'").toLowerCase().match(TOKEN) ?? [])
+    .map((token) => token.replace(/^'+|'+$/g, ""))
+    .filter((token) => token !== "");
 
 /** Word counts over the batch's vocabulary, so triplets must share a batch. */
 export function createBagOfWordsProvider(): EmbeddingProvider {
   return {
     id: "bag-of-words",
+    batchScoped: true,
     async embedBatch(texts: string[]): Promise<number[][]> {
       const vocabulary = [...new Set(texts.flatMap(words))];
       const index = new Map(vocabulary.map((word, i) => [word, i]));
@@ -318,7 +422,7 @@ export function createBagOfWordsProvider(): EmbeddingProvider {
 }
 ```
 
-The runner must skip the on-disk cache for this provider, since vectors depend on the batch.
+The runner must skip the on-disk cache for any `batchScoped` provider, since vectors depend on the batch.
 
 **Step 4: Run it to confirm it passes**
 
@@ -357,6 +461,7 @@ Use `mkdtempSync` from `node:fs` and `tmpdir` from `node:os` for a throwaway fol
 - A vector written by one `openVectorCache(dir, providerId)` call is read back by a second call, within Float32 precision.
 - Different provider ids don't see each other's entries.
 - A truncated last line, as left by a killed run, is ignored and earlier entries still load.
+- An entry whose vector length differs from the first entry's is skipped, even if its base64 decodes to a multiple of 4 bytes.
 
 **Step 3: Run it to confirm it fails**
 
@@ -384,11 +489,14 @@ export function openVectorCache(dir: string, providerId: string): VectorCache {
   const file = join(dir, `${hash(providerId).slice(0, 16)}.tsv`);
   const entries = new Map<string, string>();
   if (existsSync(file)) {
+    let vectorBytes: number | undefined;
     for (const line of readFileSync(file, "utf8").split("\n")) {
       const [key, value] = line.split("\t");
-      if (key?.length === 64 && value && Buffer.from(value, "base64").length % 4 === 0) {
-        entries.set(key, value);
-      }
+      if (key?.length !== 64 || !value) continue;
+      const bytes = Buffer.from(value, "base64").length;
+      if (bytes === 0 || bytes % 4 !== 0) continue;
+      vectorBytes ??= bytes;
+      if (bytes === vectorBytes) entries.set(key, value);
     }
   }
   return {
@@ -411,7 +519,7 @@ export function openVectorCache(dir: string, providerId: string): VectorCache {
 }
 ```
 
-A half-written line can pass the length check, so also skip any entry whose vector length differs from the first entry's. Add that once the truncation test shows it's needed.
+A half-written line can decode to a whole number of floats, so the check against the first entry's length is required.
 
 **Step 5: Run it to confirm it passes**
 
@@ -737,7 +845,8 @@ git commit -m "Calibrate Ollama against Workers AI"
 - Paraphrase and edit lengths differ by more than 30%.
 - A `swapped-roles` edit doesn't use the same words as the anchor.
 - The paraphrase has the same words as the anchor with one word changed.
-- Any field is empty, or the id is duplicated.
+- Any field is empty, including `baseId`, or the id is duplicated.
+- Rows that share a `baseId` differ in category or anchor, or repeat a `contextSentences` value.
 
 **Step 2: Draft about 130 triplets across the six categories**
 
@@ -790,11 +899,13 @@ git commit -m "Add OpenRouter benchmark provider"
 
 **Step 1: Write `run.ts`**
 
-Load approved triplets, expand them with context, and run each model in turn. Check the cache first, and only embed what's missing. Ollama models run inside `withExclusiveModel`. A failed model goes into `missing` with its error and the run continues. Skip the cache for bag-of-words, and score each triplet in its own batch.
+Load approved triplets, expand them with context under the same `baseId`, and run each model in turn. Check the cache first, and only embed what's missing. Ollama models run inside `withExclusiveModel`. A provider failure or a `scoreTriplet` throw puts that model under `missing` with its error, and the run continues. Skip the cache for `batchScoped` providers such as bag-of-words, and embed and score each triplet in its own batch.
 
 **Step 2: Test the report**
 
-Move the aggregation into a tested function. `results.json` holds, per model, the pass rate and interval per category, per context length and overall, plus every triplet's margin. A failed model appears under `missing`, never as zero.
+Move the aggregation into a tested function. Intervals assume independent results, so never pool the same `baseId` in one interval. The report computes intervals per `contextSentences` value, and headline and category numbers use bare sentences (`contextSentences: 0`). The aggregator must throw on a duplicate `baseId` within a group; test that.
+
+`results.json` holds, per model, the bare-sentence pass rate and interval overall and per category, the pass rate and interval for each other context length, and every triplet's margin. A failed model appears under `missing`, never as zero.
 
 **Step 3: Run it**
 

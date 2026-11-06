@@ -48,6 +48,8 @@ Chosen on 2026-11-05. Hugging Face downloads and Ollama pulls are proxies for us
 
 **Providers.** An `EmbeddingProvider` interface takes a list of texts and returns vectors. There is one adapter each for Workers AI, Ollama and OpenRouter. Bag-of-words is a provider too, so it's scored the same way. Each model is marked `live` or `batch-only`.
 
+**Batch-scoped providers.** A provider can set `batchScoped`, which means its vectors are only comparable within one `embedBatch` call. Callers must not cache those vectors or split a triplet across batches. Bag-of-words is batch-scoped, because its vocabulary comes from the batch, so it skips the cache.
+
 **Batch step.** `npm run benchmark` embeds every text with every model, caches vectors on disk, and writes a results JSON file. Reruns only pay for what changed, and progress is saved as it goes so a failed run can resume. Results are committed; vectors are not. [Concept orthogonality](../ideas/concept-orthogonality.md) can reuse the cache.
 
 **Page.** The heatmap and drill-down render from the results JSON. A new API route scores submitted sentences on the `live` models.
@@ -92,15 +94,16 @@ For each model on both Ollama and Workers AI, run about 100 triplets on both hos
 - **Swapped roles:** the edit uses exactly the same words as the anchor, so bag-of-words can't separate them.
 - **Paraphrases:** they must not simply copy the anchor with one word changed.
 - **Paragraphs:** each triplet gets the same neutral surrounding sentences on all three versions, with about 1, 3 and 8 sentences of context.
-- **Format:** one JSONL file with category, anchor, paraphrase, edit and review status. Only approved rows reach the benchmark.
+- **Format:** one JSONL file with base id, category, anchor, paraphrase, edit and review status. Only approved rows reach the benchmark.
 - **Outside check:** PAWS, run overnight through Ollama.
 
 ## Scoring
 
-- A tie is a fail.
-- Each model gets a pass rate per category and overall, with bootstrap 95% confidence intervals across triplets.
+- A tie is a fail. A margin up to `TIE_TOLERANCE` (1e-6) counts as a tie, because vectors are cached as Float32 and exact ties can land just above zero.
+- Each model gets a pass rate per category and overall, with Wilson 95% score intervals across triplets. Wilson keeps a real interval at 0/15 and 15/15, where a bootstrap collapses to zero width.
+- Results must be independent. All context lengths of one triplet share a `baseId`, and the same `baseId` is never pooled in one interval. Intervals are computed per `contextSentences` value, and headline and category numbers use bare sentences.
 - Margins are stored, so the drill-down can separate clear passes from near misses.
-- A model that fails to run is reported as missing, never scored as zero.
+- A model that fails to run, or returns vectors `scoreTriplet` rejects, is reported as missing, never scored as zero.
 
 ## Live box
 
@@ -120,7 +123,7 @@ embeddinggemma has no listed price, so it stays out of the box unless calibratio
 
 ## Testing
 
-Vitest covers scoring, ties, bootstrap, resuming a run, adapters with mocked providers, and the API route's limits.
+Vitest covers scoring, ties, Wilson intervals, resuming a run, adapters with mocked providers, and the API route's limits.
 
 ## Open questions
 
