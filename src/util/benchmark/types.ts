@@ -11,6 +11,8 @@ export type Category = (typeof CATEGORIES)[number];
 
 export interface Triplet {
   id: string;
+  /** Shared by every context length of one base triplet. Never pool it in one interval. */
+  baseId: string;
   category: Category;
   anchor: string;
   paraphrase: string;
@@ -38,5 +40,10 @@ export interface Interval {
 export interface EmbeddingProvider {
   /** Stable identity, including pooling and task prefix. Used in cache keys. */
   readonly id: string;
+  /**
+   * Vectors are only comparable within one embedBatch call, so callers must
+   * not cache them or split a triplet across batches.
+   */
+  readonly batchScoped?: boolean;
   embedBatch(texts: string[]): Promise<number[][]>;
 }

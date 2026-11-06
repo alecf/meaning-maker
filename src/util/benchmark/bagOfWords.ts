@@ -12,6 +12,7 @@ const words = (text: string): string[] =>
 export function createBagOfWordsProvider(): EmbeddingProvider {
   return {
     id: "bag-of-words",
+    batchScoped: true,
     async embedBatch(texts: string[]): Promise<number[][]> {
       const vocabulary = [...new Set(texts.flatMap(words))];
       const index = new Map(vocabulary.map((word, i) => [word, i]));

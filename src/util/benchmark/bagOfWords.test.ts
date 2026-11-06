@@ -22,6 +22,9 @@ describe("bag of words", () => {
     ]);
     expect(scoreTriplet("t", a, p, e).passed).toBe(false);
   });
+  it("is marked as batch-scoped", () => {
+    expect(createBagOfWordsProvider().batchScoped).toBe(true);
+  });
   it("gives vectors of the same length within a batch", async () => {
     const [a, b] = await createBagOfWordsProvider().embedBatch(["one two", "three"]);
     expect(a.length).toBe(b.length);
