@@ -6,7 +6,7 @@
  *   npm run benchmark:calibrate
  */
 import { readFileSync, writeFileSync } from "node:fs";
-import type { EmbeddingProvider, Triplet } from "@/util/benchmark/types";
+import type { Triplet } from "@/util/benchmark/types";
 import { getPlatformProxy } from "wrangler";
 import { compareHosts, type HostComparison, type HostVectors } from "./calibration";
 import { embedCached } from "./embedCached";
@@ -15,6 +15,7 @@ import {
   assertNotTruncated,
   createOllamaProvider,
   type OllamaModel,
+  type OllamaProvider,
   withExclusiveModel,
 } from "./ollama";
 import { openVectorCache, type VectorCache } from "./vectorCache";
@@ -56,14 +57,13 @@ const errorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
 async function ollamaVectors(
-  model: OllamaModel,
+  provider: OllamaProvider,
   cache: VectorCache,
-  provider: EmbeddingProvider,
   texts: string[],
 ): Promise<HostVectors> {
-  return withExclusiveModel(model, async () => {
+  return withExclusiveModel(provider, async () => {
     const pending = texts.filter((text) => !cache.get(text));
-    if (pending.length > 0) await assertNotTruncated(model, pending);
+    if (pending.length > 0) await assertNotTruncated(provider.model, pending);
     return embedCached(provider, cache, texts);
   });
 }
@@ -102,7 +102,7 @@ for (const [i, { ollama }] of PAIRS.entries()) {
     const provider = await createOllamaProvider(ollama);
     rows[i].ollamaId = provider.id;
     const cache = openVectorCache(CACHE_DIR, provider.id);
-    const local = await ollamaVectors(ollama, cache, provider, texts);
+    const local = await ollamaVectors(provider, cache, texts);
     Object.assign(rows[i], compareHosts(triplets, workers, local));
   } catch (error) {
     rows[i].error = `Ollama: ${errorMessage(error)}`;

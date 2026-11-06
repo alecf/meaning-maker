@@ -1,10 +1,18 @@
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   assertNotTruncated,
   createOllamaProvider,
+  type ExclusiveOptions,
   type OllamaModel,
   withExclusiveModel,
 } from "./ollama";
@@ -23,7 +31,12 @@ interface FakeOptions {
   /** Models per `/api/ps` call. The last entry repeats. */
   ps?: string[][];
   /** What `/api/tags` lists. */
-  tags?: { name: string; digest: string }[];
+  tags?: { name: string; digest?: unknown }[];
+  /** What `/api/tags` lists from its second call on, as after a re-pull. */
+  tagsLater?: { name: string; digest?: unknown }[];
+  onEmbed?: () => void;
+  /** Holds each embed response until it resolves. */
+  embedGate?: Promise<void>;
   promptEvalCount?: (input: string[]) => unknown;
   embeddingsPerRequest?: number;
   unloadStatus?: number;
@@ -34,6 +47,9 @@ const isUnload = (post: Post): boolean => post.path === "/api/generate";
 function fakeOllama({
   ps = [[]],
   tags = [{ name: "m:latest", digest: "digest-1" }],
+  tagsLater,
+  onEmbed,
+  embedGate,
   promptEvalCount = () => 1,
   embeddingsPerRequest,
   unloadStatus = 200,
@@ -41,6 +57,7 @@ function fakeOllama({
   const posts: Post[] = [];
   const events: string[] = [];
   let psCalls = 0;
+  let tagCalls = 0;
   let inFlight = 0;
   let maxInFlight = 0;
 
@@ -51,7 +68,10 @@ function fakeOllama({
     "fetch",
     vi.fn(async (url: string, init?: RequestInit) => {
       const path = new URL(url).pathname;
-      if (path === "/api/tags") return json({ models: tags });
+      if (path === "/api/tags") {
+        tagCalls++;
+        return json({ models: tagCalls > 1 && tagsLater ? tagsLater : tags });
+      }
       if (path === "/api/ps") {
         const names = ps[Math.min(psCalls, ps.length - 1)];
         psCalls++;
@@ -64,9 +84,10 @@ function fakeOllama({
         return json({}, unloadStatus);
       }
       events.push("embed");
+      onEmbed?.();
       inFlight++;
       maxInFlight = Math.max(maxInFlight, inFlight);
-      await Promise.resolve();
+      await (embedGate ?? Promise.resolve());
       inFlight--;
       const count = embeddingsPerRequest ?? post.body.input?.length ?? 0;
       return json({
@@ -93,8 +114,12 @@ describe("ollama", () => {
   let quick: { pollMs: number; unloadTimeoutMs: number; lockFile: string };
   let warn: ReturnType<typeof vi.spyOn>;
 
-  const inSession = <T>(run: () => Promise<T>, target = model): Promise<T> =>
-    withExclusiveModel(target, run, quick);
+  const inSession = async <T>(
+    run: () => Promise<T>,
+    target = model,
+    options: ExclusiveOptions = quick,
+  ): Promise<T> =>
+    withExclusiveModel(await createOllamaProvider(target), run, options);
   const embedOne = async (): Promise<void> => {
     const provider = await createOllamaProvider(model);
     await provider.embedBatch(["a"]);
@@ -139,7 +164,7 @@ describe("ollama", () => {
       const fake = fakeOllama({ ps: [["other:latest"]] });
       const run = vi.fn(async () => undefined);
       await expect(
-        withExclusiveModel(model, run, { ...quick, timeoutMs: 0 }),
+        inSession(run, model, { ...quick, timeoutMs: 0 }),
       ).rejects.toThrow(/busy with other:latest/);
       expect(run).not.toHaveBeenCalled();
       expect(fake.posts).toEqual([]);
@@ -184,21 +209,26 @@ describe("ollama", () => {
     });
     it("gives an unload time to finish", async () => {
       fakeOllama({ ps: [[], [], ["m:latest"], ["m:latest"], []] });
-      await withExclusiveModel(model, embedOne, { ...quick, unloadTimeoutMs: 1000 });
+      await inSession(embedOne, model, { ...quick, unloadTimeoutMs: 1000 });
       expect(warn).not.toHaveBeenCalled();
     });
     it("refuses a second model while one is in use", async () => {
-      fakeOllama();
+      fakeOllama({
+        tags: [
+          { name: "m:latest", digest: "d" },
+          { name: "n:latest", digest: "d" },
+        ],
+      });
       await inSession(async () => {
         await expect(
-          withExclusiveModel({ ...model, name: "n" }, async () => 1, quick),
+          inSession(async () => 1, { ...model, name: "n" }),
         ).rejects.toThrow(/Already using m/);
       });
     });
     it("can be used again after a failure", async () => {
       fakeOllama({ ps: [["other:latest"], []] });
       await expect(
-        withExclusiveModel(model, async () => 1, { ...quick, timeoutMs: 0 }),
+        inSession(async () => 1, model, { ...quick, timeoutMs: 0 }),
       ).rejects.toThrow();
       await expect(inSession(async () => 1)).resolves.toBe(1);
     });
@@ -228,7 +258,7 @@ describe("ollama", () => {
       writeFileSync(lockPath(), String(process.pid));
       const run = vi.fn(async () => undefined);
       await expect(
-        withExclusiveModel(model, run, { ...quick, lockFile: lockPath() }),
+        inSession(run, model, { ...quick, lockFile: lockPath() }),
       ).rejects.toThrow(`held by pid ${process.pid}`);
       expect(run).not.toHaveBeenCalled();
       expect(existsSync(lockPath())).toBe(true);
@@ -240,9 +270,110 @@ describe("ollama", () => {
       fakeOllama();
       writeFileSync(lockPath(), contents);
       await expect(
-        withExclusiveModel(model, async () => 1, { ...quick, lockFile: lockPath() }),
+        inSession(async () => 1, model, { ...quick, lockFile: lockPath() }),
       ).resolves.toBe(1);
-      expect(existsSync(lockPath())).toBe(false);
+      expect(readdirSync(dir)).toEqual([]);
+    });
+    it("leaves a lock another process has taken over", async () => {
+      fakeOllama();
+      await inSession(async () => {
+        writeFileSync(lockFile, "2147483646");
+      });
+      expect(readFileSync(lockFile, "utf8")).toBe("2147483646");
+    });
+    it("doesn't mind if the lock has already gone", async () => {
+      fakeOllama();
+      await expect(
+        inSession(async () => {
+          rmSync(lockFile);
+          return 1;
+        }),
+      ).resolves.toBe(1);
+    });
+  });
+
+  describe("digest check", () => {
+    it("stops before any request if the model changed after the provider", async () => {
+      const fake = fakeOllama({
+        tagsLater: [{ name: "m:latest", digest: "digest-2" }],
+      });
+      const run = vi.fn(async () => undefined);
+      await expect(inSession(run)).rejects.toThrow(/m changed/);
+      expect(run).not.toHaveBeenCalled();
+      expect(fake.posts).toEqual([]);
+      expect(existsSync(lockFile)).toBe(false);
+    });
+    it("stops if the model was removed after the provider", async () => {
+      fakeOllama({ tagsLater: [] });
+      await expect(inSession(async () => 1)).rejects.toThrow(/m isn't installed/);
+    });
+    it.each([
+      ["empty", ""],
+      ["missing", undefined],
+      ["a number", 7],
+    ])("throws if the digest is %s", async (_name, digest) => {
+      fakeOllama({ tags: [{ name: "m:latest", digest }] });
+      await expect(createOllamaProvider(model)).rejects.toThrow(/no digest/);
+    });
+  });
+
+  describe("in-flight work", () => {
+    it("sends no embed after the lock is released", async () => {
+      const lockHeld: boolean[] = [];
+      const fake = fakeOllama({
+        onEmbed: () => lockHeld.push(existsSync(lockFile)),
+      });
+      const provider = await createOllamaProvider({ ...model, batchSize: 1 });
+      await expect(
+        withExclusiveModel(
+          provider,
+          () =>
+            Promise.all([
+              provider.embedBatch(["a", "b", "c"]),
+              provider.embedBatch(["x"]),
+            ]),
+          quick,
+        ),
+      ).rejects.toThrow(/in flight/);
+      const finished = fake.events.length;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(fake.events).toHaveLength(finished);
+      expect(lockHeld).not.toContain(false);
+      expect(fake.events.at(-1)).not.toBe("embed");
+      expect(existsSync(lockFile)).toBe(false);
+    });
+    it("finishes the request in flight before it unloads", async () => {
+      let release = (): void => undefined;
+      const embedGate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let markSent = (): void => undefined;
+      const sent = new Promise<void>((resolve) => {
+        markSent = resolve;
+      });
+      const fake = fakeOllama({ onEmbed: () => markSent(), embedGate });
+      const provider = await createOllamaProvider(model);
+      const finished = withExclusiveModel(
+        provider,
+        async () => {
+          void provider.embedBatch(["a"]);
+          await sent;
+        },
+        quick,
+      );
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(fake.events).toEqual(["embed"]);
+      expect(existsSync(lockFile)).toBe(true);
+      release();
+      await finished;
+      expect(fake.events).toEqual(["embed", "unload"]);
+    });
+    it("refuses new work once the run has settled", async () => {
+      const fake = fakeOllama();
+      const provider = await createOllamaProvider(model);
+      await withExclusiveModel(provider, async () => undefined, quick);
+      await expect(provider.embedBatch(["a"])).rejects.toThrow(/withExclusiveModel/);
+      expect(fake.embeds()).toEqual([]);
     });
   });
 
