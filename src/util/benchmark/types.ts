@@ -24,7 +24,7 @@ export interface TripletScore {
   id: string;
   paraphraseSimilarity: number;
   editSimilarity: number;
-  /** paraphraseSimilarity - editSimilarity. Positive means a pass. */
+  /** paraphraseSimilarity - editSimilarity. A pass must beat TIE_TOLERANCE. */
   margin: number;
   passed: boolean;
 }

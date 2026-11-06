@@ -1,17 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cosine, passRate, scoreTriplet } from "./scoring";
-
-describe("cosine", () => {
-  it("is 1 for parallel vectors", () => {
-    expect(cosine([1, 2], [2, 4])).toBeCloseTo(1);
-  });
-  it("is 0 for orthogonal vectors", () => {
-    expect(cosine([1, 0], [0, 1])).toBeCloseTo(0);
-  });
-  it("is 0 rather than NaN for a zero vector", () => {
-    expect(cosine([0, 0], [1, 1])).toBe(0);
-  });
-});
+import { passRate, scoreTriplet, TIE_TOLERANCE } from "./scoring";
 
 describe("scoreTriplet", () => {
   it("passes when the paraphrase is closer", () => {
@@ -24,6 +12,36 @@ describe("scoreTriplet", () => {
   });
   it("counts a tie as a fail", () => {
     expect(scoreTriplet("t", [1, 0], [1, 1], [1, 1]).passed).toBe(false);
+  });
+  it("reports cosine similarity to the anchor", () => {
+    const score = scoreTriplet("t", [1, 2], [2, 4], [-2, 1]);
+    expect(score.paraphraseSimilarity).toBeCloseTo(1);
+    expect(score.editSimilarity).toBeCloseTo(0);
+  });
+  it("counts a margin within the tolerance as a tie", () => {
+    const score = scoreTriplet("t", [1, 0], [1, 0], [1, 0.0005]);
+    expect(score.margin).toBeGreaterThan(0);
+    expect(score.margin).toBeLessThan(TIE_TOLERANCE);
+    expect(score.passed).toBe(false);
+  });
+  it("passes a margin just beyond the tolerance", () => {
+    const score = scoreTriplet("t", [1, 0], [1, 0], [1, 0.002]);
+    expect(score.margin).toBeGreaterThan(TIE_TOLERANCE);
+    expect(score.passed).toBe(true);
+  });
+
+  it.each<[string, number[], number[], number[]]>([
+    ["a zero edit vector", [1, 0], [1, 0], [0, 0]],
+    ["a zero anchor vector", [0, 0], [1, 0], [0, 1]],
+    ["a vector whose norm underflows to zero", [1, 0], [1e-200, 0], [0, 1]],
+    ["a longer paraphrase", [1, 0], [1, 0, 9, 9, 9], [0.9, 0.1]],
+    ["a shorter edit", [1, 0, 1], [1, 0, 1], [1, 0]],
+    ["empty vectors", [], [], []],
+    ["NaN", [1, 0], [Number.NaN, 0], [0, 1]],
+    ["Infinity", [1, 0], [1, 0], [Number.POSITIVE_INFINITY, 1]],
+    ["a similarity that overflows", [1e200, 1e200], [1e200, 1e200], [0, 1]],
+  ])("rejects %s", (_name, anchor, paraphrase, edit) => {
+    expect(() => scoreTriplet("t", anchor, paraphrase, edit)).toThrow(/Triplet t/);
   });
 });
 

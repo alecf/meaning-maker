@@ -1,27 +1,50 @@
+import { cosine_similarity } from "../util";
 import type { Interval, TripletScore } from "./types";
 
-export function cosine(a: number[], b: number[]): number {
-  let ab = 0;
-  let aa = 0;
-  let bb = 0;
-  for (let i = 0; i < a.length; i++) {
-    ab += a[i] * b[i];
-    aa += a[i] * a[i];
-    bb += b[i] * b[i];
+/** Vectors are cached as Float32, so smaller margins are rounding, not signal. */
+export const TIE_TOLERANCE = 1e-6;
+
+function assertScorable(id: string, vectors: number[][]): void {
+  const length = vectors[0].length;
+  for (const vector of vectors) {
+    if (vector.length === 0 || vector.length !== length) {
+      throw new Error(`Triplet ${id}: vectors must share a non-zero length`);
+    }
+    if (!vector.every(Number.isFinite)) {
+      throw new Error(`Triplet ${id}: vector has a non-finite element`);
+    }
+    if (vector.reduce((sum, x) => sum + x * x, 0) === 0) {
+      throw new Error(`Triplet ${id}: vector has zero norm`);
+    }
   }
-  return aa === 0 || bb === 0 ? 0 : ab / Math.sqrt(aa * bb);
 }
 
+function similarity(id: string, a: number[], b: number[]): number {
+  const value = cosine_similarity(a, b);
+  if (!Number.isFinite(value)) {
+    throw new Error(`Triplet ${id}: similarity is not finite`);
+  }
+  return value;
+}
+
+/** Throws on vectors it can't score, so a bad model is missing, not failed. */
 export function scoreTriplet(
   id: string,
   anchor: number[],
   paraphrase: number[],
   edit: number[],
 ): TripletScore {
-  const paraphraseSimilarity = cosine(anchor, paraphrase);
-  const editSimilarity = cosine(anchor, edit);
+  assertScorable(id, [anchor, paraphrase, edit]);
+  const paraphraseSimilarity = similarity(id, anchor, paraphrase);
+  const editSimilarity = similarity(id, anchor, edit);
   const margin = paraphraseSimilarity - editSimilarity;
-  return { id, paraphraseSimilarity, editSimilarity, margin, passed: margin > 0 };
+  return {
+    id,
+    paraphraseSimilarity,
+    editSimilarity,
+    margin,
+    passed: margin > TIE_TOLERANCE,
+  };
 }
 
 /** Small seeded generator, so results files don't change between runs. */
