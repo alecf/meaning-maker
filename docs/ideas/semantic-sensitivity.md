@@ -1,6 +1,6 @@
 # Semantic sensitivity
 
-**Status:** Idea | **Effort:** M | **Depends on:** none
+**Status:** Exploring | **Effort:** M | **Depends on:** none | **Design:** [plan](../plans/2026-11-05-semantic-sensitivity-design.md)
 
 ## Introduction
 
