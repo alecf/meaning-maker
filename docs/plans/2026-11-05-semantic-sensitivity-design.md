@@ -147,7 +147,8 @@ Run on 2026-11-06, with 16 models and none missing. The idea's kill criteria loo
 - Models differ clearly on bare sentences: Gemini Embedding 2 scored 78.2% (69.9 to 84.6), Cohere Embed 5 Pro 23.5% (16.8 to 31.9) and bag-of-words 0.8%.
 - The ranking is stable: the Spearman correlation of model pass rates between random stratified halves has a median of 0.92 (0.84 to 0.97). That's a check within one set, not a second set.
 - Swapped roles defeats everything, with no model above 11%.
-- Filler washes out most of the signal. At 8 sentences mean paraphrase and edit similarities are almost equal, so rates near 50% there may be close to chance, and models below 50% on bare sentences can rise toward it. That's an explanation to test, not a finding.
+- Filler lowers most pass rates but doesn't turn verdicts into chance. At 8 sentences median margins shrink about tenfold, yet a triplet's bare verdict still predicts its verdict with filler: Gemini Embedding 2 passes 62% of what it passed bare and 4% of what it failed, and rank correlation of margins runs from 0.23 to 0.80. Categories still differ for every model, and swapped roles stays at or below 11%. A rate near 50% here is not a coin flip.
+- Cohere rises with filler (24% to 41%), mostly on numbers (24% to 76%), and nomic rises too (10% to 20%). Neither is explained.
 - Voyage's retest flipped 8 of 476 verdicts, all with filler, and moved margins by a median of 0.001 and at most 0.026.
 
 The prefixes and `input_type` values are judgement calls, and nomic's, Cohere's and Gemini's could matter. Never pick them by score.

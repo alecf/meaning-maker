@@ -1,0 +1,1771 @@
+{
+  "models": [
+    {
+      "key": "google/gemini-embedding-2",
+      "name": "Gemini Embedding 2",
+      "source": "Hosted API",
+      "usedByApp": false,
+      "overall": {
+        "rate": 0.7815126050420168,
+        "low": 0.6991078789903405,
+        "high": 0.8463105864867208,
+        "count": 119
+      },
+      "categories": {
+        "negation": {
+          "rate": 0.9523809523809523,
+          "low": 0.7733063972991618,
+          "high": 0.9915440122838988,
+          "count": 21
+        },
+        "swapped-roles": {
+          "rate": 0.10526315789473684,
+          "low": 0.029358560033196812,
+          "high": 0.31394082911909027,
+          "count": 19
+        },
+        "quantifiers": {
+          "rate": 0.95,
+          "low": 0.7638688045357189,
+          "high": 0.9911185512976646,
+          "count": 20
+        },
+        "numbers": {
+          "rate": 0.8571428571428571,
+          "low": 0.653639395331373,
+          "high": 0.9501898753920957,
+          "count": 21
+        },
+        "antonyms": {
+          "rate": 0.9523809523809523,
+          "low": 0.7733063972991618,
+          "high": 0.9915440122838988,
+          "count": 21
+        },
+        "negation-scope": {
+          "rate": 0.8235294117647058,
+          "low": 0.5897054122922163,
+          "high": 0.938088734108536,
+          "count": 17
+        }
+      },
+      "contexts": {
+        "0": {
+          "rate": 0.7815126050420168,
+          "low": 0.6991078789903405,
+          "high": 0.8463105864867208,
+          "count": 119
+        },
+        "1": {
+          "rate": 0.6554621848739496,
+          "low": 0.5664236310321145,
+          "high": 0.734777611097009,
+          "count": 119
+        },
+        "3": {
+          "rate": 0.4957983193277311,
+          "low": 0.40751373378757344,
+          "high": 0.5843456921008287,
+          "count": 119
+        },
+        "8": {
+          "rate": 0.4957983193277311,
+          "low": 0.40751373378757344,
+          "high": 0.5843456921008287,
+          "count": 119
+        }
+      }
+    },
+    {
+      "key": "embeddinggemma",
+      "name": "EmbeddingGemma",
+      "source": "Open, run locally",
+      "usedByApp": false,
+      "overall": {
+        "rate": 0.6974789915966386,
+        "low": 0.609838618993892,
+        "high": 0.7727683642512106,
+        "count": 119
+      },
+      "categories": {
+        "negation": {
+          "rate": 0.9047619047619048,
+          "low": 0.7108586073515344,
+          "high": 0.9734812328017302,
+          "count": 21
+        },
+        "swapped-roles": {
+          "rate": 0.05263157894736842,
+          "low": 0.009351993958601784,
+          "high": 0.24638731374732356,
+          "count": 19
+        },
+        "quantifiers": {
+          "rate": 0.9,
+          "low": 0.6989663528135878,
+          "high": 0.9721335190383086,
+          "count": 20
+        },
+        "numbers": {
+          "rate": 0.7619047619047619,
+          "low": 0.5490882614178733,
+          "high": 0.8937198704460038,
+          "count": 21
+        },
+        "antonyms": {
+          "rate": 0.9523809523809523,
+          "low": 0.7733063972991618,
+          "high": 0.9915440122838988,
+          "count": 21
+        },
+        "negation-scope": {
+          "rate": 0.5294117647058824,
+          "low": 0.3096323491502231,
+          "high": 0.7383489368862088,
+          "count": 17
+        }
+      },
+      "contexts": {
+        "0": {
+          "rate": 0.6974789915966386,
+          "low": 0.609838618993892,
+          "high": 0.7727683642512106,
+          "count": 119
+        },
+        "1": {
+          "rate": 0.6974789915966386,
+          "low": 0.609838618993892,
+          "high": 0.7727683642512106,
+          "count": 119
+        },
+        "3": {
+          "rate": 0.6890756302521008,
+          "low": 0.6010962954049548,
+          "high": 0.7652295396169522,
+          "count": 119
+        },
+        "8": {
+          "rate": 0.6470588235294118,
+          "low": 0.5578268486620179,
+          "high": 0.7270932452439098,
+          "count": 119
+        }
+      }
+    },
+    {
+      "key": "mxbai-embed-large",
+      "name": "mxbai-embed-large",
+      "source": "Open, run locally",
+      "usedByApp": false,
+      "overall": {
+        "rate": 0.680672268907563,
+        "low": 0.5923842348931507,
+        "high": 0.7576604519055603,
+        "count": 119
+      },
+      "categories": {
+        "negation": {
+          "rate": 0.9523809523809523,
+          "low": 0.7733063972991618,
+          "high": 0.9915440122838988,
+          "count": 21
+        },
+        "swapped-roles": {
+          "rate": 0,
+          "low": 0,
+          "high": 0.16817922625956366,
+          "count": 19
+        },
+        "quantifiers": {
+          "rate": 0.85,
+          "low": 0.6395811333571357,
+          "high": 0.9476312545132735,
+          "count": 20
+        },
+        "numbers": {
+          "rate": 0.7142857142857143,
+          "low": 0.5004361911516968,
+          "high": 0.8618613712823846,
+          "count": 21
+        },
+        "antonyms": {
+          "rate": 0.9047619047619048,
+          "low": 0.7108586073515344,
+          "high": 0.9734812328017302,
+          "count": 21
+        },
+        "negation-scope": {
+          "rate": 0.5882352941176471,
+          "low": 0.3600544248492146,
+          "high": 0.7838894332600814,
+          "count": 17
+        }
+      },
+      "contexts": {
+        "0": {
+          "rate": 0.680672268907563,
+          "low": 0.5923842348931507,
+          "high": 0.7576604519055603,
+          "count": 119
+        },
+        "1": {
+          "rate": 0.6134453781512605,
+          "low": 0.5237116502225045,
+          "high": 0.6960838507906397,
+          "count": 119
+        },
+        "3": {
+          "rate": 0.5462184873949579,
+          "low": 0.4567208538286783,
+          "high": 0.6328254613988988,
+          "count": 119
+        },
+        "8": {
+          "rate": 0.48739495798319327,
+          "low": 0.3993973581494731,
+          "high": 0.576180919515733,
+          "count": 119
+        }
+      }
+    },
+    {
+      "key": "bge-large",
+      "name": "bge-large, cls pooling",
+      "source": "Open, run locally",
+      "usedByApp": false,
+      "overall": {
+        "rate": 0.6638655462184874,
+        "low": 0.5750484561183402,
+        "high": 0.742433934233979,
+        "count": 119
+      },
+      "categories": {
+        "negation": {
+          "rate": 0.9047619047619048,
+          "low": 0.7108586073515344,
+          "high": 0.9734812328017302,
+          "count": 21
+        },
+        "swapped-roles": {
+          "rate": 0,
+          "low": 0,
+          "high": 0.16817922625956366,
+          "count": 19
+        },
+        "quantifiers": {
+          "rate": 0.9,
+          "low": 0.6989663528135878,
+          "high": 0.9721335190383086,
+          "count": 20
+        },
+        "numbers": {
+          "rate": 0.7142857142857143,
+          "low": 0.5004361911516968,
+          "high": 0.8618613712823846,
+          "count": 21
+        },
+        "antonyms": {
+          "rate": 0.9047619047619048,
+          "low": 0.7108586073515344,
+          "high": 0.9734812328017302,
+          "count": 21
+        },
+        "negation-scope": {
+          "rate": 0.47058823529411764,
+          "low": 0.2616510631137911,
+          "high": 0.6903676508497769,
+          "count": 17
+        }
+      },
+      "contexts": {
+        "0": {
+          "rate": 0.6638655462184874,
+          "low": 0.5750484561183402,
+          "high": 0.742433934233979,
+          "count": 119
+        },
+        "1": {
+          "rate": 0.6470588235294118,
+          "low": 0.5578268486620179,
+          "high": 0.7270932452439098,
+          "count": 119
+        },
+        "3": {
+          "rate": 0.5966386554621849,
+          "low": 0.5068121909355547,
+          "high": 0.6804210136311977,
+          "count": 119
+        },
+        "8": {
+          "rate": 0.5042016806722689,
+          "low": 0.4156543078991713,
+          "high": 0.5924862662124265,
+          "count": 119
+        }
+      }
+    },
+    {
+      "key": "bge-large (mean)",
+      "name": "bge-large, mean pooling",
+      "source": "Open, on Workers AI",
+      "usedByApp": true,
+      "overall": {
+        "rate": 0.6470588235294118,
+        "low": 0.5578268486620179,
+        "high": 0.7270932452439098,
+        "count": 119
+      },
+      "categories": {
+        "negation": {
+          "rate": 0.8571428571428571,
+          "low": 0.653639395331373,
+          "high": 0.9501898753920957,
+          "count": 21
+        },
+        "swapped-roles": {
+          "rate": 0,
+          "low": 0,
+          "high": 0.16817922625956366,
+          "count": 19
+        },
+        "quantifiers": {
+          "rate": 0.85,
+          "low": 0.6395811333571357,
+          "high": 0.9476312545132735,
+          "count": 20
+        },
+        "numbers": {
+          "rate": 0.6666666666666666,
+          "low": 0.45373451812717547,
+          "high": 0.8280524748771099,
+          "count": 21
+        },
+        "antonyms": {
+          "rate": 0.9047619047619048,
+          "low": 0.7108586073515344,
+          "high": 0.9734812328017302,
+          "count": 21
+        },
+        "negation-scope": {
+          "rate": 0.5294117647058824,
+          "low": 0.3096323491502231,
+          "high": 0.7383489368862088,
+          "count": 17
+        }
+      },
+      "contexts": {
+        "0": {
+          "rate": 0.6470588235294118,
+          "low": 0.5578268486620179,
+          "high": 0.7270932452439098,
+          "count": 119
+        },
+        "1": {
+          "rate": 0.5798319327731093,
+          "low": 0.4900150448470668,
+          "high": 0.664655863273294,
+          "count": 119
+        },
+        "3": {
+          "rate": 0.5294117647058824,
+          "low": 0.44022132058121927,
+          "high": 0.6167626981999663,
+          "count": 119
+        },
+        "8": {
+          "rate": 0.4957983193277311,
+          "low": 0.40751373378757344,
+          "high": 0.5843456921008287,
+          "count": 119
+        }
+      }
+    },
+    {
+      "key": "bge-m3",
+      "name": "bge-m3",
+      "source": "Open, run locally",
+      "usedByApp": false,
+      "overall": {
+        "rate": 0.5882352941176471,
+        "low": 0.49840095087500513,
+        "high": 0.6725511054685516,
+        "count": 119
+      },
+      "categories": {
+        "negation": {
+          "rate": 0.8095238095238095,
+          "low": 0.5999943512871267,
+          "high": 0.9233243500065463,
+          "count": 21
+        },
+        "swapped-roles": {
+          "rate": 0.05263157894736842,
+          "low": 0.009351993958601784,
+          "high": 0.24638731374732356,
+          "count": 19
+        },
+        "quantifiers": {
+          "rate": 0.85,
+          "low": 0.6395811333571357,
+          "high": 0.9476312545132735,
+          "count": 20
+        },
+        "numbers": {
+          "rate": 0.2857142857142857,
+          "low": 0.1381386287176154,
+          "high": 0.4995638088483033,
+          "count": 21
+        },
+        "antonyms": {
+          "rate": 0.9047619047619048,
+          "low": 0.7108586073515344,
+          "high": 0.9734812328017302,
+          "count": 21
+        },
+        "negation-scope": {
+          "rate": 0.5882352941176471,
+          "low": 0.3600544248492146,
+          "high": 0.7838894332600814,
+          "count": 17
+        }
+      },
+      "contexts": {
+        "0": {
+          "rate": 0.5882352941176471,
+          "low": 0.49840095087500513,
+          "high": 0.6725511054685516,
+          "count": 119
+        },
+        "1": {
+          "rate": 0.5546218487394958,
+          "low": 0.46500731936245715,
+          "high": 0.6408201440883161,
+          "count": 119
+        },
+        "3": {
+          "rate": 0.4957983193277311,
+          "low": 0.40751373378757344,
+          "high": 0.5843456921008287,
+          "count": 119
+        },
+        "8": {
+          "rate": 0.4369747899159664,
+          "low": 0.3512097950721258,
+          "high": 0.5266815932539053,
+          "count": 119
+        }
+      }
+    },
+    {
+      "key": "embeddinggemma-2",
+      "name": "EmbeddingGemma 2",
+      "source": "Open, run locally",
+      "usedByApp": false,
+      "overall": {
+        "rate": 0.5882352941176471,
+        "low": 0.49840095087500513,
+        "high": 0.6725511054685516,
+        "count": 119
+      },
+      "categories": {
+        "negation": {
+          "rate": 0.8571428571428571,
+          "low": 0.653639395331373,
+          "high": 0.9501898753920957,
+          "count": 21
+        },
+        "swapped-roles": {
+          "rate": 0,
+          "low": 0,
+          "high": 0.16817922625956366,
+          "count": 19
+        },
+        "quantifiers": {
+          "rate": 0.75,
+          "low": 0.5312991206074114,
+          "high": 0.8881382993000237,
+          "count": 20
+        },
+        "numbers": {
+          "rate": 0.7619047619047619,
+          "low": 0.5490882614178733,
+          "high": 0.8937198704460038,
+          "count": 21
+        },
+        "antonyms": {
+          "rate": 0.6666666666666666,
+          "low": 0.45373451812717547,
+          "high": 0.8280524748771099,
+          "count": 21
+        },
+        "negation-scope": {
+          "rate": 0.4117647058823529,
+          "low": 0.21611056673991857,
+          "high": 0.6399455751507853,
+          "count": 17
+        }
+      },
+      "contexts": {
+        "0": {
+          "rate": 0.5882352941176471,
+          "low": 0.49840095087500513,
+          "high": 0.6725511054685516,
+          "count": 119
+        },
+        "1": {
+          "rate": 0.4957983193277311,
+          "low": 0.40751373378757344,
+          "high": 0.5843456921008287,
+          "count": 119
+        },
+        "3": {
+          "rate": 0.47058823529411764,
+          "low": 0.3832373018000337,
+          "high": 0.5597786794187808,
+          "count": 119
+        },
+        "8": {
+          "rate": 0.36134453781512604,
+          "low": 0.28061871212335665,
+          "high": 0.4507423421939116,
+          "count": 119
+        }
+      }
+    },
+    {
+      "key": "openai/text-embedding-3-large",
+      "name": "OpenAI 3-large",
+      "source": "Hosted API",
+      "usedByApp": false,
+      "overall": {
+        "rate": 0.5714285714285714,
+        "low": 0.4816542598561846,
+        "high": 0.6567355000409802,
+        "count": 119
+      },
+      "categories": {
+        "negation": {
+          "rate": 0.8095238095238095,
+          "low": 0.5999943512871267,
+          "high": 0.9233243500065463,
+          "count": 21
+        },
+        "swapped-roles": {
+          "rate": 0.05263157894736842,
+          "low": 0.009351993958601784,
+          "high": 0.24638731374732356,
+          "count": 19
+        },
+        "quantifiers": {
+          "rate": 0.9,
+          "low": 0.6989663528135878,
+          "high": 0.9721335190383086,
+          "count": 20
+        },
+        "numbers": {
+          "rate": 0.47619047619047616,
+          "low": 0.28344005975415376,
+          "high": 0.6763046555309483,
+          "count": 21
+        },
+        "antonyms": {
+          "rate": 0.8095238095238095,
+          "low": 0.5999943512871267,
+          "high": 0.9233243500065463,
+          "count": 21
+        },
+        "negation-scope": {
+          "rate": 0.29411764705882354,
+          "low": 0.1327998952626943,
+          "high": 0.5313311024822815,
+          "count": 17
+        }
+      },
+      "contexts": {
+        "0": {
+          "rate": 0.5714285714285714,
+          "low": 0.4816542598561846,
+          "high": 0.6567355000409802,
+          "count": 119
+        },
+        "1": {
+          "rate": 0.24369747899159663,
+          "low": 0.17537185067393446,
+          "high": 0.3280531285185917,
+          "count": 119
+        },
+        "3": {
+          "rate": 0.2689075630252101,
+          "low": 0.19739336657391976,
+          "high": 0.35487505728819396,
+          "count": 119
+        },
+        "8": {
+          "rate": 0.17647058823529413,
+          "low": 0.11841874493196486,
+          "high": 0.2547570484749945,
+          "count": 119
+        }
+      }
+    },
+    {
+      "key": "mongodb/voyage-4-large",
+      "name": "Voyage 4 Large",
+      "source": "Hosted API",
+      "usedByApp": false,
+      "overall": {
+        "rate": 0.5630252100840336,
+        "low": 0.4733184067460947,
+        "high": 0.6487902049278742,
+        "count": 119
+      },
+      "categories": {
+        "negation": {
+          "rate": 0.38095238095238093,
+          "low": 0.20751011264009112,
+          "high": 0.5912134637854193,
+          "count": 21
+        },
+        "swapped-roles": {
+          "rate": 0.10526315789473684,
+          "low": 0.029358560033196812,
+          "high": 0.31394082911909027,
+          "count": 19
+        },
+        "quantifiers": {
+          "rate": 0.8,
+          "low": 0.583982565906683,
+          "high": 0.9193423379822393,
+          "count": 20
+        },
+        "numbers": {
+          "rate": 0.6190476190476191,
+          "low": 0.4087865362145808,
+          "high": 0.7924898873599089,
+          "count": 21
+        },
+        "antonyms": {
+          "rate": 0.7619047619047619,
+          "low": 0.5490882614178733,
+          "high": 0.8937198704460038,
+          "count": 21
+        },
+        "negation-scope": {
+          "rate": 0.7058823529411765,
+          "low": 0.46866889751771845,
+          "high": 0.8672001047373057,
+          "count": 17
+        }
+      },
+      "contexts": {
+        "0": {
+          "rate": 0.5630252100840336,
+          "low": 0.4733184067460947,
+          "high": 0.6487902049278742,
+          "count": 119
+        },
+        "1": {
+          "rate": 0.5462184873949579,
+          "low": 0.4567208538286783,
+          "high": 0.6328254613988988,
+          "count": 119
+        },
+        "3": {
+          "rate": 0.5630252100840336,
+          "low": 0.4733184067460947,
+          "high": 0.6487902049278742,
+          "count": 119
+        },
+        "8": {
+          "rate": 0.5714285714285714,
+          "low": 0.4816542598561846,
+          "high": 0.6567355000409802,
+          "count": 119
+        }
+      }
+    },
+    {
+      "key": "sentence-transformers/all-mpnet-base-v2",
+      "name": "all-mpnet-base-v2",
+      "source": "Hosted API",
+      "usedByApp": false,
+      "overall": {
+        "rate": 0.5462184873949579,
+        "low": 0.4567208538286783,
+        "high": 0.6328254613988988,
+        "count": 119
+      },
+      "categories": {
+        "negation": {
+          "rate": 0.7142857142857143,
+          "low": 0.5004361911516968,
+          "high": 0.8618613712823846,
+          "count": 21
+        },
+        "swapped-roles": {
+          "rate": 0,
+          "low": 0,
+          "high": 0.16817922625956366,
+          "count": 19
+        },
+        "quantifiers": {
+          "rate": 0.8,
+          "low": 0.583982565906683,
+          "high": 0.9193423379822393,
+          "count": 20
+        },
+        "numbers": {
+          "rate": 0.5238095238095238,
+          "low": 0.32369534446905174,
+          "high": 0.7165599402458462,
+          "count": 21
+        },
+        "antonyms": {
+          "rate": 0.7619047619047619,
+          "low": 0.5490882614178733,
+          "high": 0.8937198704460038,
+          "count": 21
+        },
+        "negation-scope": {
+          "rate": 0.4117647058823529,
+          "low": 0.21611056673991857,
+          "high": 0.6399455751507853,
+          "count": 17
+        }
+      },
+      "contexts": {
+        "0": {
+          "rate": 0.5462184873949579,
+          "low": 0.4567208538286783,
+          "high": 0.6328254613988988,
+          "count": 119
+        },
+        "1": {
+          "rate": 0.5462184873949579,
+          "low": 0.4567208538286783,
+          "high": 0.6328254613988988,
+          "count": 119
+        },
+        "3": {
+          "rate": 0.37815126050420167,
+          "low": 0.2961237747102377,
+          "high": 0.4677995760534223,
+          "count": 119
+        },
+        "8": {
+          "rate": 0.24369747899159663,
+          "low": 0.17537185067393446,
+          "high": 0.3280531285185917,
+          "count": 119
+        }
+      }
+    },
+    {
+      "key": "qwen3-embedding:0.6b",
+      "name": "Qwen3 Embedding 0.6B",
+      "source": "Open, run locally",
+      "usedByApp": false,
+      "overall": {
+        "rate": 0.48739495798319327,
+        "low": 0.3993973581494731,
+        "high": 0.576180919515733,
+        "count": 119
+      },
+      "categories": {
+        "negation": {
+          "rate": 0.8571428571428571,
+          "low": 0.653639395331373,
+          "high": 0.9501898753920957,
+          "count": 21
+        },
+        "swapped-roles": {
+          "rate": 0,
+          "low": 0,
+          "high": 0.16817922625956366,
+          "count": 19
+        },
+        "quantifiers": {
+          "rate": 0.85,
+          "low": 0.6395811333571357,
+          "high": 0.9476312545132735,
+          "count": 20
+        },
+        "numbers": {
+          "rate": 0.14285714285714285,
+          "low": 0.04981012460790432,
+          "high": 0.34636060466862695,
+          "count": 21
+        },
+        "antonyms": {
+          "rate": 0.7142857142857143,
+          "low": 0.5004361911516968,
+          "high": 0.8618613712823846,
+          "count": 21
+        },
+        "negation-scope": {
+          "rate": 0.29411764705882354,
+          "low": 0.1327998952626943,
+          "high": 0.5313311024822815,
+          "count": 17
+        }
+      },
+      "contexts": {
+        "0": {
+          "rate": 0.48739495798319327,
+          "low": 0.3993973581494731,
+          "high": 0.576180919515733,
+          "count": 119
+        },
+        "1": {
+          "rate": 0.3949579831932773,
+          "low": 0.31173465003308,
+          "high": 0.4847509971769717,
+          "count": 119
+        },
+        "3": {
+          "rate": 0.3025210084033613,
+          "low": 0.22723163574878935,
+          "high": 0.39016138100610787,
+          "count": 119
+        },
+        "8": {
+          "rate": 0.31932773109243695,
+          "low": 0.24233954809443967,
+          "high": 0.40761576510684916,
+          "count": 119
+        }
+      }
+    },
+    {
+      "key": "all-minilm",
+      "name": "all-MiniLM-L6-v2",
+      "source": "Open, run locally",
+      "usedByApp": false,
+      "overall": {
+        "rate": 0.2689075630252101,
+        "low": 0.19739336657391976,
+        "high": 0.35487505728819396,
+        "count": 119
+      },
+      "categories": {
+        "negation": {
+          "rate": 0.5714285714285714,
+          "low": 0.36546554224185784,
+          "high": 0.7553003119028359,
+          "count": 21
+        },
+        "swapped-roles": {
+          "rate": 0,
+          "low": 0,
+          "high": 0.16817922625956366,
+          "count": 19
+        },
+        "quantifiers": {
+          "rate": 0.35,
+          "low": 0.18119182312398308,
+          "high": 0.5671457249315559,
+          "count": 20
+        },
+        "numbers": {
+          "rate": 0.3333333333333333,
+          "low": 0.1719475251228901,
+          "high": 0.5462654818728245,
+          "count": 21
+        },
+        "antonyms": {
+          "rate": 0.2857142857142857,
+          "low": 0.1381386287176154,
+          "high": 0.4995638088483033,
+          "count": 21
+        },
+        "negation-scope": {
+          "rate": 0,
+          "low": 0,
+          "high": 0.18431813738065556,
+          "count": 17
+        }
+      },
+      "contexts": {
+        "0": {
+          "rate": 0.2689075630252101,
+          "low": 0.19739336657391976,
+          "high": 0.35487505728819396,
+          "count": 119
+        },
+        "1": {
+          "rate": 0.23529411764705882,
+          "low": 0.16810496684846438,
+          "high": 0.31903886412086596,
+          "count": 119
+        },
+        "3": {
+          "rate": 0.11764705882352941,
+          "low": 0.0713873789431006,
+          "high": 0.18782037690148767,
+          "count": 119
+        },
+        "8": {
+          "rate": 0.08403361344537816,
+          "low": 0.04628480898030856,
+          "high": 0.14779835397149624,
+          "count": 119
+        }
+      }
+    },
+    {
+      "key": "openai/text-embedding-3-small",
+      "name": "OpenAI 3-small",
+      "source": "Hosted API",
+      "usedByApp": false,
+      "overall": {
+        "rate": 0.24369747899159663,
+        "low": 0.17537185067393446,
+        "high": 0.3280531285185917,
+        "count": 119
+      },
+      "categories": {
+        "negation": {
+          "rate": 0.38095238095238093,
+          "low": 0.20751011264009112,
+          "high": 0.5912134637854193,
+          "count": 21
+        },
+        "swapped-roles": {
+          "rate": 0,
+          "low": 0,
+          "high": 0.16817922625956366,
+          "count": 19
+        },
+        "quantifiers": {
+          "rate": 0.45,
+          "low": 0.25819785703764037,
+          "high": 0.6579146589808726,
+          "count": 20
+        },
+        "numbers": {
+          "rate": 0.19047619047619047,
+          "low": 0.07667564999345375,
+          "high": 0.40000564871287325,
+          "count": 21
+        },
+        "antonyms": {
+          "rate": 0.38095238095238093,
+          "low": 0.20751011264009112,
+          "high": 0.5912134637854193,
+          "count": 21
+        },
+        "negation-scope": {
+          "rate": 0,
+          "low": 0,
+          "high": 0.18431813738065556,
+          "count": 17
+        }
+      },
+      "contexts": {
+        "0": {
+          "rate": 0.24369747899159663,
+          "low": 0.17537185067393446,
+          "high": 0.3280531285185917,
+          "count": 119
+        },
+        "1": {
+          "rate": 0.14285714285714285,
+          "low": 0.09114539800740312,
+          "high": 0.21690580250677272,
+          "count": 119
+        },
+        "3": {
+          "rate": 0.14285714285714285,
+          "low": 0.09114539800740312,
+          "high": 0.21690580250677272,
+          "count": 119
+        },
+        "8": {
+          "rate": 0.06722689075630252,
+          "low": 0.0344557500423331,
+          "high": 0.12706511646307994,
+          "count": 119
+        }
+      }
+    },
+    {
+      "key": "cohere/embed-5-pro",
+      "name": "Cohere Embed 5 Pro",
+      "source": "Hosted API",
+      "usedByApp": false,
+      "overall": {
+        "rate": 0.23529411764705882,
+        "low": 0.16810496684846438,
+        "high": 0.31903886412086596,
+        "count": 119
+      },
+      "categories": {
+        "negation": {
+          "rate": 0.2857142857142857,
+          "low": 0.1381386287176154,
+          "high": 0.4995638088483033,
+          "count": 21
+        },
+        "swapped-roles": {
+          "rate": 0,
+          "low": 0,
+          "high": 0.16817922625956366,
+          "count": 19
+        },
+        "quantifiers": {
+          "rate": 0.5,
+          "low": 0.2992980068701797,
+          "high": 0.7007019931298203,
+          "count": 20
+        },
+        "numbers": {
+          "rate": 0.23809523809523808,
+          "low": 0.10628012955399624,
+          "high": 0.45091173858212674,
+          "count": 21
+        },
+        "antonyms": {
+          "rate": 0.3333333333333333,
+          "low": 0.1719475251228901,
+          "high": 0.5462654818728245,
+          "count": 21
+        },
+        "negation-scope": {
+          "rate": 0,
+          "low": 0,
+          "high": 0.18431813738065556,
+          "count": 17
+        }
+      },
+      "contexts": {
+        "0": {
+          "rate": 0.23529411764705882,
+          "low": 0.16810496684846438,
+          "high": 0.31903886412086596,
+          "count": 119
+        },
+        "1": {
+          "rate": 0.31092436974789917,
+          "low": 0.23477046038304783,
+          "high": 0.3989037045950453,
+          "count": 119
+        },
+        "3": {
+          "rate": 0.3865546218487395,
+          "low": 0.30391614920936033,
+          "high": 0.4762883497774955,
+          "count": 119
+        },
+        "8": {
+          "rate": 0.4117647058823529,
+          "low": 0.3274488945314485,
+          "high": 0.5015990491249949,
+          "count": 119
+        }
+      }
+    },
+    {
+      "key": "nomic-embed-text",
+      "name": "nomic-embed-text",
+      "source": "Open, run locally",
+      "usedByApp": false,
+      "overall": {
+        "rate": 0.10084033613445378,
+        "low": 0.05863029594850281,
+        "high": 0.16801516344969372,
+        "count": 119
+      },
+      "categories": {
+        "negation": {
+          "rate": 0.19047619047619047,
+          "low": 0.07667564999345375,
+          "high": 0.40000564871287325,
+          "count": 21
+        },
+        "swapped-roles": {
+          "rate": 0,
+          "low": 0,
+          "high": 0.16817922625956366,
+          "count": 19
+        },
+        "quantifiers": {
+          "rate": 0.05,
+          "low": 0.008881448702335523,
+          "high": 0.23613119546428119,
+          "count": 20
+        },
+        "numbers": {
+          "rate": 0.09523809523809523,
+          "low": 0.026518767198269788,
+          "high": 0.2891413926484656,
+          "count": 21
+        },
+        "antonyms": {
+          "rate": 0.23809523809523808,
+          "low": 0.10628012955399624,
+          "high": 0.45091173858212674,
+          "count": 21
+        },
+        "negation-scope": {
+          "rate": 0,
+          "low": 0,
+          "high": 0.18431813738065556,
+          "count": 17
+        }
+      },
+      "contexts": {
+        "0": {
+          "rate": 0.10084033613445378,
+          "low": 0.05863029594850281,
+          "high": 0.16801516344969372,
+          "count": 119
+        },
+        "1": {
+          "rate": 0.1092436974789916,
+          "low": 0.06496241204406843,
+          "high": 0.17796419557732396,
+          "count": 119
+        },
+        "3": {
+          "rate": 0.18487394957983194,
+          "low": 0.12537707996317887,
+          "high": 0.2640798616669763,
+          "count": 119
+        },
+        "8": {
+          "rate": 0.20168067226890757,
+          "low": 0.13944185884479787,
+          "high": 0.282577379231749,
+          "count": 119
+        }
+      }
+    },
+    {
+      "key": "bag-of-words",
+      "name": "Word counts (no AI)",
+      "source": "Baseline",
+      "usedByApp": false,
+      "overall": {
+        "rate": 0.008403361344537815,
+        "low": 0.0014849430236823467,
+        "high": 0.04606788591935969,
+        "count": 119
+      },
+      "categories": {
+        "negation": {
+          "rate": 0.047619047619047616,
+          "low": 0.00845598771610133,
+          "high": 0.22669360270083821,
+          "count": 21
+        },
+        "swapped-roles": {
+          "rate": 0,
+          "low": 0,
+          "high": 0.16817922625956366,
+          "count": 19
+        },
+        "quantifiers": {
+          "rate": 0,
+          "low": 0,
+          "high": 0.16112516018512965,
+          "count": 20
+        },
+        "numbers": {
+          "rate": 0,
+          "low": 0,
+          "high": 0.15463902098714374,
+          "count": 21
+        },
+        "antonyms": {
+          "rate": 0,
+          "low": 0,
+          "high": 0.15463902098714374,
+          "count": 21
+        },
+        "negation-scope": {
+          "rate": 0,
+          "low": 0,
+          "high": 0.18431813738065556,
+          "count": 17
+        }
+      },
+      "contexts": {
+        "0": {
+          "rate": 0.008403361344537815,
+          "low": 0.0014849430236823467,
+          "high": 0.04606788591935969,
+          "count": 119
+        },
+        "1": {
+          "rate": 0.008403361344537815,
+          "low": 0.0014849430236823467,
+          "high": 0.04606788591935969,
+          "count": 119
+        },
+        "3": {
+          "rate": 0.01680672268907563,
+          "low": 0.004621175406590277,
+          "high": 0.059212801759647604,
+          "count": 119
+        },
+        "8": {
+          "rate": 0.01680672268907563,
+          "low": 0.004621175406590277,
+          "high": 0.059212801759647604,
+          "count": 119
+        }
+      }
+    }
+  ],
+  "categories": [
+    "negation",
+    "swapped-roles",
+    "quantifiers",
+    "numbers",
+    "antonyms",
+    "negation-scope"
+  ],
+  "contexts": [
+    0,
+    1,
+    3,
+    8
+  ],
+  "tripletCount": 119,
+  "examples": [
+    {
+      "id": "ant-02",
+      "category": "antonyms",
+      "anchor": "The firm hired forty engineers in May.",
+      "paraphrase": "In May, forty engineers got jobs at the firm.",
+      "edit": "The firm fired forty engineers in May.",
+      "scores": [
+        {
+          "key": "google/gemini-embedding-2",
+          "margin": 0.061269,
+          "passed": true
+        },
+        {
+          "key": "embeddinggemma",
+          "margin": 0.091678,
+          "passed": true
+        },
+        {
+          "key": "mxbai-embed-large",
+          "margin": 0.137428,
+          "passed": true
+        },
+        {
+          "key": "bge-large",
+          "margin": 0.129624,
+          "passed": true
+        },
+        {
+          "key": "bge-large (mean)",
+          "margin": 0.103103,
+          "passed": true
+        },
+        {
+          "key": "bge-m3",
+          "margin": 0.075389,
+          "passed": true
+        },
+        {
+          "key": "embeddinggemma-2",
+          "margin": 0.028034,
+          "passed": true
+        },
+        {
+          "key": "openai/text-embedding-3-large",
+          "margin": 0.066929,
+          "passed": true
+        },
+        {
+          "key": "mongodb/voyage-4-large",
+          "margin": 0.030842,
+          "passed": true
+        },
+        {
+          "key": "sentence-transformers/all-mpnet-base-v2",
+          "margin": 0.16861,
+          "passed": true
+        },
+        {
+          "key": "qwen3-embedding:0.6b",
+          "margin": 0.091376,
+          "passed": true
+        },
+        {
+          "key": "all-minilm",
+          "margin": 0.036075,
+          "passed": true
+        },
+        {
+          "key": "openai/text-embedding-3-small",
+          "margin": 0.041765,
+          "passed": true
+        },
+        {
+          "key": "cohere/embed-5-pro",
+          "margin": 0.050244,
+          "passed": true
+        },
+        {
+          "key": "nomic-embed-text",
+          "margin": 0.009495,
+          "passed": true
+        },
+        {
+          "key": "bag-of-words",
+          "margin": -0.101214,
+          "passed": false
+        }
+      ]
+    },
+    {
+      "id": "neg-16",
+      "category": "negation",
+      "anchor": "This lens fits older camera bodies.",
+      "paraphrase": "Older camera bodies will accept this lens.",
+      "edit": "This lens does not fit older camera bodies.",
+      "scores": [
+        {
+          "key": "google/gemini-embedding-2",
+          "margin": 0.04669,
+          "passed": true
+        },
+        {
+          "key": "embeddinggemma",
+          "margin": 0.088054,
+          "passed": true
+        },
+        {
+          "key": "mxbai-embed-large",
+          "margin": 0.098714,
+          "passed": true
+        },
+        {
+          "key": "bge-large",
+          "margin": 0.094354,
+          "passed": true
+        },
+        {
+          "key": "bge-large (mean)",
+          "margin": 0.060925,
+          "passed": true
+        },
+        {
+          "key": "bge-m3",
+          "margin": 0.077646,
+          "passed": true
+        },
+        {
+          "key": "embeddinggemma-2",
+          "margin": 0.026414,
+          "passed": true
+        },
+        {
+          "key": "openai/text-embedding-3-large",
+          "margin": 0.049203,
+          "passed": true
+        },
+        {
+          "key": "mongodb/voyage-4-large",
+          "margin": -0.011718,
+          "passed": false
+        },
+        {
+          "key": "sentence-transformers/all-mpnet-base-v2",
+          "margin": -0.085418,
+          "passed": false
+        },
+        {
+          "key": "qwen3-embedding:0.6b",
+          "margin": -0.044563,
+          "passed": false
+        },
+        {
+          "key": "all-minilm",
+          "margin": -0.07761,
+          "passed": false
+        },
+        {
+          "key": "openai/text-embedding-3-small",
+          "margin": -0.013444,
+          "passed": false
+        },
+        {
+          "key": "cohere/embed-5-pro",
+          "margin": -0.029863,
+          "passed": false
+        },
+        {
+          "key": "nomic-embed-text",
+          "margin": -0.024547,
+          "passed": false
+        },
+        {
+          "key": "bag-of-words",
+          "margin": 0.049829,
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": "num-15",
+      "category": "numbers",
+      "anchor": "The deadline is March 3.",
+      "paraphrase": "The third of March is the deadline.",
+      "edit": "The deadline is March 13.",
+      "scores": [
+        {
+          "key": "google/gemini-embedding-2",
+          "margin": 0.038341,
+          "passed": true
+        },
+        {
+          "key": "embeddinggemma",
+          "margin": 0.201269,
+          "passed": true
+        },
+        {
+          "key": "mxbai-embed-large",
+          "margin": 0.054041,
+          "passed": true
+        },
+        {
+          "key": "bge-large",
+          "margin": 0.047979,
+          "passed": true
+        },
+        {
+          "key": "bge-large (mean)",
+          "margin": 0.047372,
+          "passed": true
+        },
+        {
+          "key": "bge-m3",
+          "margin": -0.033608,
+          "passed": false
+        },
+        {
+          "key": "embeddinggemma-2",
+          "margin": 0.010223,
+          "passed": true
+        },
+        {
+          "key": "openai/text-embedding-3-large",
+          "margin": -0.000666,
+          "passed": false
+        },
+        {
+          "key": "mongodb/voyage-4-large",
+          "margin": 0.087096,
+          "passed": true
+        },
+        {
+          "key": "sentence-transformers/all-mpnet-base-v2",
+          "margin": -0.092009,
+          "passed": false
+        },
+        {
+          "key": "qwen3-embedding:0.6b",
+          "margin": -0.056578,
+          "passed": false
+        },
+        {
+          "key": "all-minilm",
+          "margin": -0.002182,
+          "passed": false
+        },
+        {
+          "key": "openai/text-embedding-3-small",
+          "margin": -0.05383,
+          "passed": false
+        },
+        {
+          "key": "cohere/embed-5-pro",
+          "margin": -0.056655,
+          "passed": false
+        },
+        {
+          "key": "nomic-embed-text",
+          "margin": -0.013276,
+          "passed": false
+        },
+        {
+          "key": "bag-of-words",
+          "margin": -0.054644,
+          "passed": false
+        }
+      ]
+    },
+    {
+      "id": "scope-13",
+      "category": "negation-scope",
+      "anchor": "The rule does not require students to wear uniforms.",
+      "paraphrase": "Under the rule, students face no duty to wear uniforms.",
+      "edit": "The rule requires students not to wear uniforms.",
+      "scores": [
+        {
+          "key": "google/gemini-embedding-2",
+          "margin": -0.00249,
+          "passed": false
+        },
+        {
+          "key": "embeddinggemma",
+          "margin": 0.040262,
+          "passed": true
+        },
+        {
+          "key": "mxbai-embed-large",
+          "margin": 0.060064,
+          "passed": true
+        },
+        {
+          "key": "bge-large",
+          "margin": 0.053689,
+          "passed": true
+        },
+        {
+          "key": "bge-large (mean)",
+          "margin": 0.035697,
+          "passed": true
+        },
+        {
+          "key": "bge-m3",
+          "margin": 0.038847,
+          "passed": true
+        },
+        {
+          "key": "embeddinggemma-2",
+          "margin": 0.010788,
+          "passed": true
+        },
+        {
+          "key": "openai/text-embedding-3-large",
+          "margin": -0.055208,
+          "passed": false
+        },
+        {
+          "key": "mongodb/voyage-4-large",
+          "margin": 0.004971,
+          "passed": true
+        },
+        {
+          "key": "sentence-transformers/all-mpnet-base-v2",
+          "margin": -0.100883,
+          "passed": false
+        },
+        {
+          "key": "qwen3-embedding:0.6b",
+          "margin": 0.034075,
+          "passed": true
+        },
+        {
+          "key": "all-minilm",
+          "margin": -0.073522,
+          "passed": false
+        },
+        {
+          "key": "openai/text-embedding-3-small",
+          "margin": -0.0555,
+          "passed": false
+        },
+        {
+          "key": "cohere/embed-5-pro",
+          "margin": -0.022534,
+          "passed": false
+        },
+        {
+          "key": "nomic-embed-text",
+          "margin": -0.015908,
+          "passed": false
+        },
+        {
+          "key": "bag-of-words",
+          "margin": -0.192502,
+          "passed": false
+        }
+      ]
+    },
+    {
+      "id": "role-02",
+      "category": "swapped-roles",
+      "anchor": "Apple sued Samsung over the patent.",
+      "paraphrase": "Apple took Samsung to court over the patent.",
+      "edit": "Samsung sued Apple over the patent.",
+      "scores": [
+        {
+          "key": "google/gemini-embedding-2",
+          "margin": -0.010004,
+          "passed": false
+        },
+        {
+          "key": "embeddinggemma",
+          "margin": -0.016067,
+          "passed": false
+        },
+        {
+          "key": "mxbai-embed-large",
+          "margin": -0.057749,
+          "passed": false
+        },
+        {
+          "key": "bge-large",
+          "margin": -0.069731,
+          "passed": false
+        },
+        {
+          "key": "bge-large (mean)",
+          "margin": -0.049501,
+          "passed": false
+        },
+        {
+          "key": "bge-m3",
+          "margin": 0.012235,
+          "passed": true
+        },
+        {
+          "key": "embeddinggemma-2",
+          "margin": -0.02739,
+          "passed": false
+        },
+        {
+          "key": "openai/text-embedding-3-large",
+          "margin": 0.013878,
+          "passed": true
+        },
+        {
+          "key": "mongodb/voyage-4-large",
+          "margin": -0.035474,
+          "passed": false
+        },
+        {
+          "key": "sentence-transformers/all-mpnet-base-v2",
+          "margin": -0.025293,
+          "passed": false
+        },
+        {
+          "key": "qwen3-embedding:0.6b",
+          "margin": -0.004698,
+          "passed": false
+        },
+        {
+          "key": "all-minilm",
+          "margin": -0.0683,
+          "passed": false
+        },
+        {
+          "key": "openai/text-embedding-3-small",
+          "margin": -0.014303,
+          "passed": false
+        },
+        {
+          "key": "cohere/embed-5-pro",
+          "margin": -0.017473,
+          "passed": false
+        },
+        {
+          "key": "nomic-embed-text",
+          "margin": -0.006431,
+          "passed": false
+        },
+        {
+          "key": "bag-of-words",
+          "margin": -0.278312,
+          "passed": false
+        }
+      ]
+    },
+    {
+      "id": "num-11",
+      "category": "numbers",
+      "anchor": "The contract runs for five years.",
+      "paraphrase": "The agreement lasts half a decade.",
+      "edit": "The contract runs for fifteen years.",
+      "scores": [
+        {
+          "key": "google/gemini-embedding-2",
+          "margin": -0.00734,
+          "passed": false
+        },
+        {
+          "key": "embeddinggemma",
+          "margin": -0.036069,
+          "passed": false
+        },
+        {
+          "key": "mxbai-embed-large",
+          "margin": -0.098004,
+          "passed": false
+        },
+        {
+          "key": "bge-large",
+          "margin": -0.074925,
+          "passed": false
+        },
+        {
+          "key": "bge-large (mean)",
+          "margin": -0.079556,
+          "passed": false
+        },
+        {
+          "key": "bge-m3",
+          "margin": -0.100357,
+          "passed": false
+        },
+        {
+          "key": "embeddinggemma-2",
+          "margin": -0.038525,
+          "passed": false
+        },
+        {
+          "key": "openai/text-embedding-3-large",
+          "margin": -0.074069,
+          "passed": false
+        },
+        {
+          "key": "mongodb/voyage-4-large",
+          "margin": -0.037198,
+          "passed": false
+        },
+        {
+          "key": "sentence-transformers/all-mpnet-base-v2",
+          "margin": -0.200174,
+          "passed": false
+        },
+        {
+          "key": "qwen3-embedding:0.6b",
+          "margin": -0.11289,
+          "passed": false
+        },
+        {
+          "key": "all-minilm",
+          "margin": -0.29853,
+          "passed": false
+        },
+        {
+          "key": "openai/text-embedding-3-small",
+          "margin": -0.209931,
+          "passed": false
+        },
+        {
+          "key": "cohere/embed-5-pro",
+          "margin": -0.081056,
+          "passed": false
+        },
+        {
+          "key": "nomic-embed-text",
+          "margin": -0.094595,
+          "passed": false
+        },
+        {
+          "key": "bag-of-words",
+          "margin": -0.666667,
+          "passed": false
+        }
+      ]
+    }
+  ]
+}

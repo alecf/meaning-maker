@@ -30,6 +30,12 @@ function similarity(id: string, a: number[], b: number[]): number {
   return value;
 }
 
+/** One checked similarity, for pairs that aren't triplets. */
+export function pairSimilarity(id: string, a: number[], b: number[]): number {
+  assertScorable(id, [a, b]);
+  return similarity(id, a, b);
+}
+
 /** Throws on vectors it can't score, so a bad model is missing, not failed. */
 export function scoreTriplet(
   id: string,

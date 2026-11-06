@@ -1342,9 +1342,9 @@ Confirmed means models differ clearly and consistently by category, and bag-of-w
 
 **Stop and review the results with Alec before starting Phase 4.**
 
-## Phase 4: page (outline, to detail after Task 12)
+## Phase 4: page
 
-The findings should shape this page, so write these tasks after the review.
+Reviewed with Alec on 2026-11-06: the results count as confirmed, and the page should be visual first for someone curious about embeddings, with detail one click down. Built so far on `/benchmark`: a sketch of the idea, six example sentences, a scoreboard, category strips, the heatmap, filler small multiples and a drill-down, all from `npm run benchmark:page`. Rerun that after PAWS and the PAWS column appears. Tasks 13 and 14 below are done in that form; the live box is still to come.
 
 - **Task 13: Heatmap.** `/benchmark` renders models by category from `results.json`, sized for 390 px and 1280 px, in light and dark.
 - **Task 14: Drill-down.** Clicking a cell shows the triplets passed and failed, with margins.
