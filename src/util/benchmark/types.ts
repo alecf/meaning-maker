@@ -20,6 +20,8 @@ export interface Triplet {
   /** Sentences of neutral context added around all three; 0 for bare sentences. */
   contextSentences: 0 | 1 | 3 | 8;
   status: "draft" | "approved" | "rejected";
+  /** Judgement calls a reviewer should look at. */
+  notes?: string;
 }
 
 export interface TripletScore {

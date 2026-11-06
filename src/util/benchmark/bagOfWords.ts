@@ -14,7 +14,7 @@ const normalize = (text: string): string =>
     .replaceAll("−", "-")
     .toLowerCase();
 
-const words = (text: string): string[] =>
+export const tokenize = (text: string): string[] =>
   (normalize(text).match(TOKEN) ?? [])
     .map((token) => token.replace(/^'+|'+$/g, ""))
     .filter((token) => token !== "");
@@ -25,11 +25,11 @@ export function createBagOfWordsProvider(): EmbeddingProvider {
     id: "bag-of-words",
     batchScoped: true,
     async embedBatch(texts: string[]): Promise<number[][]> {
-      const vocabulary = [...new Set(texts.flatMap(words))];
+      const vocabulary = [...new Set(texts.flatMap(tokenize))];
       const index = new Map(vocabulary.map((word, i) => [word, i]));
       return texts.map((text) => {
         const vector = new Array<number>(vocabulary.length).fill(0);
-        for (const word of words(text)) vector[index.get(word) as number]++;
+        for (const word of tokenize(text)) vector[index.get(word) as number]++;
         return vector;
       });
     },

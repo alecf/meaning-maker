@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createBagOfWordsProvider } from "./bagOfWords";
+import { createBagOfWordsProvider, tokenize } from "./bagOfWords";
 import { scoreTriplet } from "./scoring";
 
 describe("bag of words", () => {
@@ -24,6 +24,9 @@ describe("bag of words", () => {
   });
   it("is marked as batch-scoped", () => {
     expect(createBagOfWordsProvider().batchScoped).toBe(true);
+  });
+  it("exposes its tokenizer", () => {
+    expect(tokenize("The Dog's 3.5 'kg'")).toEqual(["the", "dog's", "3.5", "kg"]);
   });
   it("gives vectors of the same length within a batch", async () => {
     const [a, b] = await createBagOfWordsProvider().embedBatch(["one two", "three"]);

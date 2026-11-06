@@ -6,7 +6,6 @@
  *   npm run benchmark:calibrate
  */
 import { readFileSync, writeFileSync } from "node:fs";
-import type { Triplet } from "@/util/benchmark/types";
 import { getPlatformProxy } from "wrangler";
 import { compareHosts, type HostComparison, type HostVectors } from "./calibration";
 import { embedCached } from "./embedCached";
@@ -18,6 +17,7 @@ import {
   type OllamaProvider,
   withExclusiveModel,
 } from "./ollama";
+import { parseTriplets } from "./validate";
 import { openVectorCache, type VectorCache } from "./vectorCache";
 import { createWorkersAiProvider, type WorkersAiModel } from "./workersAi";
 
@@ -68,10 +68,7 @@ async function ollamaVectors(
   });
 }
 
-const triplets = readFileSync(TRIPLETS_FILE, "utf8")
-  .trim()
-  .split("\n")
-  .map((line) => JSON.parse(line) as Triplet);
+const triplets = parseTriplets(readFileSync(TRIPLETS_FILE, "utf8"));
 const texts = triplets.flatMap((t) => [t.anchor, t.paraphrase, t.edit]);
 
 const { env, dispose } = await getPlatformProxy<CloudflareEnv>();
