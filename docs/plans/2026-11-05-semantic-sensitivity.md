@@ -503,6 +503,10 @@ Use `mkdtempSync` from `node:fs` and `tmpdir` from `node:os` for a throwaway fol
 - Different provider ids don't see each other's entries.
 - A truncated last line, as left by a killed run, is ignored and earlier entries still load.
 - An entry whose vector length differs from the first entry's is skipped, even if its base64 decodes to a multiple of 4 bytes.
+- A line cut exactly 64 characters short, followed by a `put`, doesn't produce a garbage vector, and the later entry survives. This reproduces a real bug: the next key used to land on the partial line and complete it.
+- A partial first line can't set the expected vector length.
+- A partial line is dropped on open, even if nothing is written.
+- Lines are skipped unless they have exactly 2 tab-separated parts, a 64-character hex key, a base64 length divisible by 4 and a byte count divisible by 4.
 
 **Step 3: Run it to confirm it fails**
 
@@ -513,7 +517,13 @@ Expected: FAIL, cannot find `./vectorCache`.
 
 ```ts
 import { createHash } from "node:crypto";
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  truncateSync,
+} from "node:fs";
 import { join } from "node:path";
 
 export interface VectorCache {
@@ -521,25 +531,51 @@ export interface VectorCache {
   put(text: string, vector: number[]): void;
 }
 
+interface Entry {
+  key: string;
+  value: string;
+  bytes: number;
+}
+
+const HEX_KEY = /^[0-9a-f]{64}$/;
+
 const hash = (value: string): string =>
   createHash("sha256").update(value).digest("hex");
+
+function parseLine(line: string): Entry | undefined {
+  const parts = line.split("\t");
+  if (parts.length !== 2) return undefined;
+  const [key, value] = parts;
+  if (!HEX_KEY.test(key) || !value || value.length % 4 !== 0) return undefined;
+  const bytes = Buffer.from(value, "base64").length;
+  return bytes > 0 && bytes % 4 === 0 ? { key, value, bytes } : undefined;
+}
+
+/** Cuts a line left by a killed run, so the next append starts a fresh one. */
+function completeLines(file: string): string[] {
+  const content = readFileSync(file, "utf8");
+  const end = content.lastIndexOf("\n") + 1;
+  if (end < content.length) truncateSync(file, end);
+  return content.slice(0, end).split("\n");
+}
+
+function loadEntries(file: string): Map<string, string> {
+  const entries = new Map<string, string>();
+  let vectorBytes: number | undefined;
+  for (const line of completeLines(file)) {
+    const entry = parseLine(line);
+    if (!entry) continue;
+    vectorBytes ??= entry.bytes;
+    if (entry.bytes === vectorBytes) entries.set(entry.key, entry.value);
+  }
+  return entries;
+}
 
 /** One append-only file per provider: `<text hash> <base64 Float32 vector>`. */
 export function openVectorCache(dir: string, providerId: string): VectorCache {
   mkdirSync(dir, { recursive: true });
   const file = join(dir, `${hash(providerId).slice(0, 16)}.tsv`);
-  const entries = new Map<string, string>();
-  if (existsSync(file)) {
-    let vectorBytes: number | undefined;
-    for (const line of readFileSync(file, "utf8").split("\n")) {
-      const [key, value] = line.split("\t");
-      if (key?.length !== 64 || !value) continue;
-      const bytes = Buffer.from(value, "base64").length;
-      if (bytes === 0 || bytes % 4 !== 0) continue;
-      vectorBytes ??= bytes;
-      if (bytes === vectorBytes) entries.set(key, value);
-    }
-  }
+  const entries = existsSync(file) ? loadEntries(file) : new Map<string, string>();
   return {
     get(text) {
       const value = entries.get(hash(text));
@@ -560,7 +596,7 @@ export function openVectorCache(dir: string, providerId: string): VectorCache {
 }
 ```
 
-A half-written line can decode to a whole number of floats, so the check against the first entry's length is required.
+A half-written line can decode to a whole number of floats, so the check against the first entry's length is required. Opening the cache truncates any partial last line rather than closing it with a newline. Once terminated, a partial first line would set the expected length, and every later entry would be skipped.
 
 **Step 5: Run it to confirm it passes**
 
@@ -588,12 +624,17 @@ Stub `globalThis.fetch` with `vi.fn()` and a small fake of `/api/ps` and `/api/e
 - Waits while another model is loaded and never posts an unload for that other model.
 - Throws after its timeout if the other model never leaves.
 - Still unloads when the callback throws.
-- Throws if the model is still loaded after the unload.
+- Throws if the model is still loaded after the unload, but gives the unload time to finish.
+- Ignores another model that arrives during the run: it isn't blamed or unloaded.
+- Refuses a second model while one is in use, and recovers after a failure.
 
 Test that `createOllamaProvider`:
 
+- Refuses to embed outside `withExclusiveModel`, as does `assertNotTruncated`.
 - Adds the task prefix to each text.
 - Sends one request at a time, in batches of `batchSize`.
+- Sends `truncate: false`.
+- Throws if a response has the wrong number of vectors.
 
 Test that `assertNotTruncated` throws when a text's `prompt_eval_count` reaches `maxTokens`, and passes below it.
 
@@ -628,6 +669,48 @@ async function loadedModels(): Promise<string[]> {
   return models.map((m) => m.name);
 }
 
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
+/** `/api/ps` always names a tag, but the registry may leave off `:latest`. */
+const withTag = (name: string): string =>
+  name.includes(":") ? name : `${name}:latest`;
+
+async function waitForIdle(timeoutMs: number, pollMs: number): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const loaded = await loadedModels();
+    if (loaded.length === 0) return;
+    if (Date.now() >= deadline) {
+      throw new Error(`Ollama still busy with ${loaded.join(", ")}`);
+    }
+    await sleep(pollMs);
+  }
+}
+
+/** Ollama's documented unload. `/api/embed` without the run's options may reload it. */
+async function unload(
+  model: string,
+  timeoutMs: number,
+  pollMs: number,
+): Promise<void> {
+  await post("/api/generate", { model, keep_alive: 0 });
+  const deadline = Date.now() + timeoutMs;
+  while ((await loadedModels()).includes(withTag(model))) {
+    if (Date.now() >= deadline) throw new Error(`Still loaded: ${model}`);
+    await sleep(pollMs);
+  }
+}
+
+export interface ExclusiveOptions {
+  timeoutMs?: number;
+  pollMs?: number;
+  unloadTimeoutMs?: number;
+}
+
+/** The model this process holds. Embedding is refused for any other. */
+let activeModel: string | undefined;
+
 /**
  * The only way to use a model. Waits for Ollama to be idle, so it never forces
  * a swap, and unloads its own model afterwards. Never unloads anything else.
@@ -635,23 +718,23 @@ async function loadedModels(): Promise<string[]> {
 export async function withExclusiveModel<T>(
   model: string,
   run: () => Promise<T>,
-  { timeoutMs = 600_000, pollMs = POLL_MS } = {},
+  {
+    timeoutMs = 600_000,
+    pollMs = POLL_MS,
+    unloadTimeoutMs = 30_000,
+  }: ExclusiveOptions = {},
 ): Promise<T> {
-  const deadline = Date.now() + timeoutMs;
-  for (;;) {
-    const loaded = await loadedModels();
-    if (loaded.length === 0) break;
-    if (Date.now() > deadline) {
-      throw new Error(`Ollama still busy with ${loaded.join(", ")}`);
-    }
-    await new Promise((resolve) => setTimeout(resolve, pollMs));
-  }
+  if (activeModel) throw new Error(`Already using ${activeModel}`);
+  activeModel = model;
   try {
-    return await run();
+    await waitForIdle(timeoutMs, pollMs);
+    try {
+      return await run();
+    } finally {
+      await unload(model, unloadTimeoutMs, pollMs);
+    }
   } finally {
-    await post("/api/embed", { model, input: [], keep_alive: 0 });
-    const left = await loadedModels();
-    if (left.length > 0) throw new Error(`Still loaded: ${left.join(", ")}`);
+    activeModel = undefined;
   }
 }
 
@@ -668,13 +751,27 @@ interface EmbedResponse {
   prompt_eval_count: number;
 }
 
-const embedOnce = (model: OllamaModel, input: string[]): Promise<EmbedResponse> =>
-  post("/api/embed", {
+async function embedOnce(
+  model: OllamaModel,
+  input: string[],
+): Promise<EmbedResponse> {
+  if (activeModel !== model.name) {
+    throw new Error(`Use ${model.name} inside withExclusiveModel`);
+  }
+  const response = await post<EmbedResponse>("/api/embed", {
     model: model.name,
     input: input.map((text) => model.prefix + text),
     keep_alive: "5m",
+    truncate: false,
     options: model.options,
   });
+  if (response.embeddings.length !== input.length) {
+    throw new Error(
+      `${model.name} gave ${response.embeddings.length} vectors for ${input.length} texts`,
+    );
+  }
+  return response;
+}
 
 export function createOllamaProvider(model: OllamaModel): EmbeddingProvider {
   const batchSize = model.batchSize ?? 64;
@@ -709,7 +806,7 @@ export async function assertNotTruncated(
 }
 ```
 
-The design says to check every response. This replaces that with a check of the longest texts, because Ollama only reports a batch total.
+Ollama only reports a batch total, so `assertNotTruncated` checks the longest texts. `truncate: false` covers every request: Ollama returns a 400 for text over the limit. That was confirmed on qwen3 at `num_ctx: 2048`. It hasn't been tested on embeddinggemma-2, which uses the MLX runner.
 
 **Step 4: Run it to confirm it passes**
 
@@ -738,6 +835,7 @@ With a fake `Ai` whose `run` is `vi.fn()`, test that:
 - `pooling: "cls"` is included in the input when set, and left out otherwise.
 - Texts go out in batches of at most `batchSize`, in order.
 - A response without `data` throws.
+- A response with the wrong number of vectors throws.
 
 **Step 2: Run it to confirm it fails**
 
@@ -751,8 +849,10 @@ import type { EmbeddingProvider } from "@/util/benchmark/types";
 
 export interface WorkersAiModel {
   name: string;
+  /** bge-large only. Its schema is the one that accepts `pooling`. */
   pooling?: "mean" | "cls";
   prefix?: string;
+  /** Defaults to 32, qwen3's limit. bge-large, bge-m3 and embeddinggemma allow 100. */
   batchSize?: number;
 }
 
@@ -773,6 +873,11 @@ export function createWorkersAiProvider(
           data?: number[][];
         };
         if (!result.data) throw new Error(`${model.name}: no data in response`);
+        if (result.data.length !== text.length) {
+          throw new Error(
+            `${model.name} gave ${result.data.length} vectors for ${text.length} texts`,
+          );
+        }
         vectors.push(...result.data);
       }
       return vectors;
@@ -781,7 +886,14 @@ export function createWorkersAiProvider(
 }
 ```
 
-Check each model's input shape with `npx wrangler ai models schema <model>`. bge-m3 and qwen3 may differ from bge-large; add per-model handling only if the schema requires it.
+`npx wrangler ai models schema <model>`, checked 2026-11-05, requires no per-model handling. All four accept `text` as an array and return `data`:
+
+| Model | Batch limit | `pooling` | Notes |
+|---|---|---|---|
+| bge-large | 100 | Yes | Default `mean` |
+| bge-m3 | 100 | No | `truncate_inputs` defaults to false |
+| embeddinggemma | 100 | No | |
+| qwen3 | 32 | No | `text` is an alias for `documents`. An `instruction` input exists, and calibration should show whether it applies to `text` |
 
 **Step 4: Run it to confirm it passes**
 
@@ -802,29 +914,34 @@ git commit -m "Add Workers AI benchmark provider with pooling"
 
 **Step 1: Confirm the task prefixes**
 
-Check each model card and record the source in a comment. Starting points to confirm, not facts:
+Checked on 2026-11-05 against each model's own card:
 
-| Model | Starting point |
-|---|---|
-| nomic-embed-text | `search_document: ` |
-| embeddinggemma | `task: sentence similarity \| query: ` |
-| EmbeddingGemma 2 | Check the model card |
-| qwen3-embedding:0.6b | Check whether the instruction format applies to symmetric comparison |
-| bge, mxbai, all-minilm | No prefix for sentence comparison, but confirm |
+| Model | Prefix | Source |
+|---|---|---|
+| all-minilm | None | [Card](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2) mentions none |
+| bge-large | None | [Card](https://huggingface.co/BAAI/bge-large-en-v1.5): the instruction is only for retrieval queries |
+| mxbai-embed-large | None | [Card](https://huggingface.co/mixedbread-ai/mxbai-embed-large-v1): the prompt is only for retrieval queries |
+| bge-m3 | None | [Card](https://huggingface.co/BAAI/bge-m3): no instructions needed |
+| embeddinggemma | `task: sentence similarity \| query: ` | [Card](https://huggingface.co/google/embeddinggemma-300m) |
+| embeddinggemma-2 | `task: sentence similarity \| query: ` | [Card](https://huggingface.co/google/embeddinggemma-2) and its `config_sentence_transformers.json` |
+| nomic-embed-text | **Unresolved**, empty for now | [Card](https://huggingface.co/nomic-ai/nomic-embed-text-v1.5) requires a prefix but names none for this task. `clustering: ` is the closest |
+| qwen3-embedding:0.6b | **Unresolved**, empty for now | [Card](https://huggingface.co/Qwen/Qwen3-Embedding-0.6B) covers queries and documents, not comparing two sentences |
 
-Use the same prefix on all three texts of a triplet, and use the same prefix on both hosts for calibration.
+Use the same prefix on all three texts of a triplet, and use the same prefix on both hosts for calibration. The prefix is part of the provider id, so changing one misses the cache instead of reusing old vectors.
 
 **Step 2: Write the registry**
 
-List all Ollama models as `OllamaModel` entries, using these limits from the vetting run:
+List all Ollama models as `OllamaModel` entries. `maxTokens` is the lowest limit known for each, from `/api/show` or the request's own `num_ctx`:
 
-| Model | `maxTokens` |
-|---|---|
-| all-minilm | 256 |
-| bge-large, mxbai-embed-large | 512 |
-| all others | 8192 |
+| Model | `maxTokens` | Why |
+|---|---|---|
+| all-minilm | 256 | `num_ctx` |
+| bge-large, mxbai-embed-large | 512 | `context_length` |
+| nomic-embed-text, embeddinggemma | 2048 | `context_length` |
+| qwen3-embedding:0.6b | 2048 | Our `num_ctx` |
+| bge-m3, embeddinggemma-2 | 8192 | Model cards. Ollama's default `num_ctx` could be lower, and `truncate: false` covers that case |
 
-Set `options: { num_ctx: 2048 }` on qwen3 to cut its 4.8 GB memory use, then confirm that with `ollama ps`.
+Set `options: { num_ctx: 2048 }` on qwen3. Measured through `withExclusiveModel` on 2026-11-05: `/api/ps` showed 988 MB, down from 4.8 GB, with `context_length: 2048`.
 
 **Step 3: Commit**
 
@@ -887,6 +1004,7 @@ git commit -m "Calibrate Ollama against Workers AI"
 - A `swapped-roles` edit doesn't use the same words as the anchor.
 - The paraphrase has the same words as the anchor with one word changed.
 - Any field is empty, including `baseId`, or the id is duplicated.
+- A text produces no bag-of-words tokens. `scoreTriplet` would throw on its zero vector and put bag-of-words under `missing`.
 - Rows that share a `baseId` differ in category or anchor, or repeat a `contextSentences` value.
 
 **Step 2: Draft about 130 triplets across the six categories**
