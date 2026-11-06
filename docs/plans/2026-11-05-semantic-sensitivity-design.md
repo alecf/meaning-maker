@@ -97,7 +97,8 @@ Run on 2026-11-05 with 102 triplets: bge-large with `cls`, bge-m3, qwen3 and emb
 - **Swapped roles:** the edit uses exactly the same words as the anchor, so bag-of-words can't separate them.
 - **Paraphrases:** they must not simply copy the anchor with one word changed.
 - **Paragraphs:** each triplet gets the same neutral surrounding sentences on all three versions, with about 1, 3 and 8 sentences of context.
-- **Format:** one JSONL file with base id, category, anchor, paraphrase, edit and review status. Only approved rows reach the benchmark.
+- **Format:** one JSONL file with base id, category, anchor, paraphrase, edit, review status and optional notes. Only approved rows reach the benchmark.
+- **Selection:** triplets are chosen on meaning and construction alone. Drafts are never embedded, and no model's score is used to choose or drop one.
 - **Outside check:** PAWS, run overnight through Ollama.
 
 ## Scoring
