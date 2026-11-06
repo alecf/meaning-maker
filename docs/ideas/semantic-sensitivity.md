@@ -30,7 +30,7 @@ Running this across categories gives each model a profile of what it notices. Th
 
 - **Triplets reflect real understanding.** Test by checking whether scores hold up on PAWS as well as our own set.
 - **Scores measure sensitivity, not depth.** Many models are trained for search, where keeping "did" and "did not" together is sensible. A low score may reflect the training goal. We should compare scores with what's published about each model's purpose before drawing conclusions.
-- **Small differences are real.** Test with bootstrap confidence intervals across triplets.
+- **Small differences are real.** Test with Wilson confidence intervals across triplets.
 - **Sentence results carry over to paragraphs.** An edit is diluted in longer text, so test this at several lengths.
 
 ## Building the corpus

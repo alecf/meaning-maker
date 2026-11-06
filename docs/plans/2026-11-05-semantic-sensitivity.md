@@ -132,6 +132,7 @@ describe("scoreTriplet", () => {
     ["a zero edit vector", [1, 0], [1, 0], [0, 0]],
     ["a zero anchor vector", [0, 0], [1, 0], [0, 1]],
     ["a vector whose norm underflows to zero", [1, 0], [1e-200, 0], [0, 1]],
+    ["a norm too small to multiply", [1e-85, 0], [1, 0], [1e-85, 0]],
     ["a longer paraphrase", [1, 0], [1, 0, 9, 9, 9], [0.9, 0.1]],
     ["a shorter edit", [1, 0, 1], [1, 0, 1], [1, 0]],
     ["empty vectors", [], [], []],
@@ -160,6 +161,9 @@ import type { TripletScore } from "./types";
 /** Vectors are cached as Float32, so smaller margins are rounding, not signal. */
 export const TIE_TOLERANCE = 1e-6;
 
+/** Below this, multiplying two squared norms can underflow to zero. */
+const MIN_SQUARED_NORM = 1e-150;
+
 function assertScorable(id: string, vectors: number[][]): void {
   const length = vectors[0].length;
   for (const vector of vectors) {
@@ -169,8 +173,8 @@ function assertScorable(id: string, vectors: number[][]): void {
     if (!vector.every(Number.isFinite)) {
       throw new Error(`Triplet ${id}: vector has a non-finite element`);
     }
-    if (vector.reduce((sum, x) => sum + x * x, 0) === 0) {
-      throw new Error(`Triplet ${id}: vector has zero norm`);
+    if (vector.reduce((sum, x) => sum + x * x, 0) < MIN_SQUARED_NORM) {
+      throw new Error(`Triplet ${id}: vector norm is too small`);
     }
   }
 }
@@ -379,6 +383,32 @@ describe("bag of words", () => {
     const [a, b] = await vectorsOf(first, second);
     expect(a).not.toEqual(b);
   });
+  it("reads a hyphen between numbers as a range, not a sign", async () => {
+    const [a, p, e] = await vectorsOf(
+      "Prices rose 10-20 percent.",
+      "Prices rose 10 to 20 percent.",
+      "Prices rose 10-30 percent.",
+    );
+    expect(scoreTriplet("t", a, p, e).passed).toBe(true);
+  });
+  it.each([
+    ["an en dash", "10-20", "10\u201320"],
+    ["a minus sign in a range", "10-20", "10\u221220"],
+    ["separate numbers", "10-20", "10 20"],
+    ["a hyphen after a word", "COVID-19", "covid 19"],
+    ["a true minus sign", "-5", "\u22125"],
+  ])("tokenizes %s the same way", async (_name, first, second) => {
+    const [a, b] = await vectorsOf(first, second);
+    expect(a).toEqual(b);
+  });
+  it("keeps a leading decimal", async () => {
+    const [a, b] = await vectorsOf(".5", "5");
+    expect(a).not.toEqual(b);
+  });
+  it("doesn't read a sentence break as a leading decimal", async () => {
+    const [a, b] = await vectorsOf("Room.5", "Room 5");
+    expect(a).toEqual(b);
+  });
   it("leaves sentence punctuation off a number", async () => {
     const [ending, bare] = await vectorsOf("It cost 5.", "It cost 5");
     expect(ending).toEqual(bare);
@@ -396,11 +426,22 @@ Expected: FAIL, cannot find `./bagOfWords`.
 ```ts
 import type { EmbeddingProvider } from "./types";
 
-/** Keeps numbers whole, with sign, currency and decimals, so edits to them show. */
-const TOKEN = /[$€£-]?\d+(?:[.,]\d+)*|[\p{L}\p{N}']+/gu;
+/**
+ * Keeps numbers whole, with sign, currency and decimals, so edits to them show.
+ * A hyphen or dot after a letter or digit is punctuation, not part of the number.
+ */
+const TOKEN =
+  /(?:[$€£]|(?<![\p{L}\p{N}])-)?(?:\d+(?:[.,]\d+)*|(?<![\p{L}\p{N}])\.\d+)|[\p{L}\p{N}']+/gu;
+
+const normalize = (text: string): string =>
+  text
+    .normalize("NFC")
+    .replaceAll("’", "'")
+    .replaceAll("−", "-")
+    .toLowerCase();
 
 const words = (text: string): string[] =>
-  (text.normalize("NFC").replaceAll("\u2019", "'").toLowerCase().match(TOKEN) ?? [])
+  (normalize(text).match(TOKEN) ?? [])
     .map((token) => token.replace(/^'+|'+$/g, ""))
     .filter((token) => token !== "");
 
