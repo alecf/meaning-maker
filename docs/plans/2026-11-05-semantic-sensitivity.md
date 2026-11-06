@@ -1315,6 +1315,8 @@ Bare sentences don't prove the one-row result for longer text. Before the main r
 
 **Step 4: Run it**
 
+Before scoring, retest Voyage: embed every approved text a second time and count the verdicts that flip. Report that noise beside its row. Identical Voyage requests sometimes return different vectors, so its margins aren't exact.
+
 Add `"benchmark": "node scripts/run.mjs scripts/benchmark/run.ts"` to `package.json`, then run `npm run benchmark`.
 
 Expected: `data/benchmark/results.json` is written and `ollama ps` is empty.

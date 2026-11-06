@@ -130,7 +130,17 @@ embeddinggemma has no listed price, so it stays out of the box unless calibratio
 
 Vitest covers scoring, ties, Wilson intervals, resuming a run, adapters with mocked providers, and the API route's limits.
 
+## Running on OpenRouter
+
+Measured on 2026-11-06.
+
+- `input_type` reaches Cohere and Voyage. Cohere uses `clustering`, the closest documented value; on a test sentence it matched `search_document`, the default. Voyage sends none, because `query` and `document` add retrieval prompts.
+- Gemini Embedding 2 doesn't take `task_type`. The task goes in the text as `task: sentence similarity | query: `.
+- Each text gets its own request, since batching saves no money and Cohere's vectors change with their batch, moving margins by up to 0.0006.
+- Each model is pinned to one upstream with no fallback, and a response from any other upstream is an error.
+- Voyage sometimes returns a different vector for an identical request. In a retest of 40 triplets the median margin shift was 0.001 and the largest 0.014, with no verdict flips. The cause is unknown. OpenAI and all-mpnet moved by at most 0.00006, and Cohere and Gemini repeated exactly on one triplet.
+
 ## Open questions
 
-- Does OpenRouter pass through settings like Cohere's `input_type`, and do its vectors match the direct APIs?
+- Do OpenRouter's vectors match the direct APIs? Unverified, because there's no direct key. The page must say so.
 - Is the Cloudflare account on Workers Free or Workers Paid?

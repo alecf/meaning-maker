@@ -1,4 +1,5 @@
 import type { OllamaModel } from "./ollama";
+import type { OpenRouterModel } from "./openRouter";
 import type { WorkersAiModel } from "./workersAi";
 
 /**
@@ -112,6 +113,54 @@ export const WORKERS_AI_MODELS: (WorkersAiModel & Registered)[] = [
   {
     // Stays out of the live box until it has a listed price.
     name: "@cf/google/embeddinggemma-300m",
+    prefix: SENTENCE_SIMILARITY,
+    availability: "batch-only",
+  },
+];
+
+/**
+ * Checked on 2026-11-06. These models never reach the live box. Vectors
+ * through OpenRouter haven't been compared with the direct APIs.
+ */
+export const OPENROUTER_MODELS: (OpenRouterModel & Registered)[] = [
+  {
+    name: "openai/text-embedding-3-small",
+    upstream: "OpenAI",
+    availability: "batch-only",
+  },
+  {
+    name: "openai/text-embedding-3-large",
+    upstream: "OpenAI",
+    availability: "batch-only",
+  },
+  {
+    name: "sentence-transformers/all-mpnet-base-v2",
+    upstream: "DeepInfra",
+    availability: "batch-only",
+  },
+  {
+    // The closest documented match, as with nomic. On a test sentence it gave
+    // the same vector as `search_document`, the default for this model.
+    // https://docs.cohere.com/reference/embed
+    name: "cohere/embed-5-pro",
+    upstream: "Cohere",
+    inputType: "clustering",
+    availability: "batch-only",
+  },
+  {
+    // `query` and `document` add retrieval prompts, so all texts go without:
+    // https://docs.voyageai.com/docs/embeddings
+    // Identical requests sometimes return a different vector, moving a margin
+    // by up to 0.014 in a 40-triplet retest, so the page must report its noise.
+    name: "mongodb/voyage-4-large",
+    upstream: "VoyageAI by MongoDB",
+    availability: "batch-only",
+  },
+  {
+    // This model takes its task in the text, not `task_type`:
+    // https://aistudio.google.com/docs/embeddings
+    name: "google/gemini-embedding-2",
+    upstream: "Google",
     prefix: SENTENCE_SIMILARITY,
     availability: "batch-only",
   },
