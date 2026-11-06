@@ -7,7 +7,7 @@ import {
   validateTriplets,
 } from "./validate";
 
-describe("drafted data", () => {
+describe("reviewed data", () => {
   const triplets = parseTriplets(
     readFileSync("data/benchmark/triplets.jsonl", "utf8"),
   );
@@ -25,8 +25,8 @@ describe("drafted data", () => {
       expect(count).toBeLessThanOrEqual(24);
     }
   });
-  it("stays in draft until the shortlist is approved", () => {
-    expect(triplets.filter((t) => t.status !== "draft")).toEqual([]);
+  it("has a review decision on every row", () => {
+    expect(triplets.filter((t) => t.status === "draft")).toEqual([]);
   });
   it("has a critique or an origin on every row", () => {
     const unexplained = triplets.filter((t) => !t.critique && !t.origin);
