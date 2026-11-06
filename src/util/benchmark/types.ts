@@ -1,0 +1,42 @@
+export const CATEGORIES = [
+  "negation",
+  "swapped-roles",
+  "quantifiers",
+  "numbers",
+  "antonyms",
+  "negation-scope",
+] as const;
+
+export type Category = (typeof CATEGORIES)[number];
+
+export interface Triplet {
+  id: string;
+  category: Category;
+  anchor: string;
+  paraphrase: string;
+  edit: string;
+  /** Sentences of neutral context added around all three; 0 for bare sentences. */
+  contextSentences: 0 | 1 | 3 | 8;
+  status: "draft" | "approved" | "rejected";
+}
+
+export interface TripletScore {
+  id: string;
+  paraphraseSimilarity: number;
+  editSimilarity: number;
+  /** paraphraseSimilarity - editSimilarity. Positive means a pass. */
+  margin: number;
+  passed: boolean;
+}
+
+export interface Interval {
+  rate: number;
+  low: number;
+  high: number;
+}
+
+export interface EmbeddingProvider {
+  /** Stable identity, including pooling and task prefix. Used in cache keys. */
+  readonly id: string;
+  embedBatch(texts: string[]): Promise<number[][]>;
+}
