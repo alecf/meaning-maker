@@ -19,6 +19,10 @@
 - PAWS results keep similarities only, never vectors. All-model vector storage would be about 5 GB in binary and over 30 GB as JSON, with 23 GB free.
 - Stop at Task 12. The page tasks depend on what the results show, so they're only outlined here.
 - Won't fix, by decision on 2026-11-05: cache checksums (only matter with real file corruption), choosing the longest texts by characters rather than tokens, and the remaining rare currency forms in bag-of-words.
+- Accepted on 2026-11-05:
+  - The digest is only checked at session start, so don't re-pull a model during a run.
+  - The stale-lock race can't feed wrong data.
+  - The paraphrase copy rule is token-based, and human review covers what it misses.
 
 ## Phase 1: scoring and baseline
 
@@ -54,6 +58,15 @@ export interface Triplet {
   status: "draft" | "approved" | "rejected";
   /** Judgement calls a reviewer should look at. */
   notes?: string;
+  /** An independent reviewer's verdict on the draft. */
+  critique?: Critique;
+  /** How a row entered the set, if not in the first draft. */
+  origin?: string;
+}
+
+export interface Critique {
+  verdict: "keep" | "fix" | "reject";
+  reason: string;
 }
 
 export interface TripletScore {
@@ -656,7 +669,7 @@ Test swap protection:
 
 Test that `createOllamaProvider`:
 
-- Refuses to embed outside `withExclusiveModel`, or in a session with other options, as does `assertNotTruncated`.
+- Refuses to embed outside `withExclusiveModel`, or in a session held by another provider, even of the same model, as does `assertNotTruncated`. The session compares provider identity.
 - Throws on overlapping `embedBatch` calls.
 - Adds the task prefix to each text.
 - Sends one request at a time, in batches of `batchSize`.
@@ -819,7 +832,8 @@ export interface ExclusiveOptions {
 }
 
 interface Session {
-  model: OllamaModel;
+  /** Compared by identity, so a stale provider can't use a newer session. */
+  provider: OllamaProvider;
   /** Set once an embed is sent. Without one, there's nothing of ours to unload. */
   embedded: boolean;
   /** The one call allowed at a time. */
@@ -829,10 +843,6 @@ interface Session {
 }
 
 let session: Session | undefined;
-
-const sameModel = (a: OllamaModel, b: OllamaModel): boolean =>
-  a.name === b.name &&
-  stableStringify(a.options ?? {}) === stableStringify(b.options ?? {});
 
 /**
  * The only way to use a model. The lockfile stops our own runs from colliding,
@@ -854,10 +864,10 @@ export async function withExclusiveModel<T>(
     lockFile = LOCK_FILE,
   }: ExclusiveOptions = {},
 ): Promise<T> {
-  if (session) throw new Error(`Already using ${session.model.name}`);
+  if (session) throw new Error(`Already using ${session.provider.model.name}`);
   acquireLock(lockFile);
   const { model, digest } = provider;
-  const own: Session = { model, embedded: false, closing: false };
+  const own: Session = { provider, embedded: false, closing: false };
   session = own;
   try {
     await waitForIdle(timeoutMs, pollMs);
@@ -922,14 +932,15 @@ async function embedOnce(
 
 /** Holds the session's one slot, so calls can't overlap between requests. */
 async function oneAtATime<T>(
-  model: OllamaModel,
+  provider: OllamaProvider,
   work: (own: Session) => Promise<T>,
 ): Promise<T> {
+  const { name } = provider.model;
   const own = session;
-  if (!own || own.closing || !sameModel(own.model, model)) {
-    throw new Error(`Use ${model.name} inside withExclusiveModel`);
+  if (!own || own.closing || own.provider !== provider) {
+    throw new Error(`Use ${name} inside withExclusiveModel`);
   }
-  if (own.inFlight) throw new Error(`${model.name} already has a request in flight`);
+  if (own.inFlight) throw new Error(`${name} already has a request in flight`);
   const current = work(own).finally(() => {
     own.inFlight = undefined;
   });
@@ -948,12 +959,12 @@ export async function createOllamaProvider(
   const batchSize = model.batchSize ?? 64;
   const { name, prefix, options } = model;
   const digest = await modelDigest(name);
-  return {
+  const provider: OllamaProvider = {
     id: stableStringify({ host: "ollama", name, prefix, options, digest }),
     model,
     digest,
     embedBatch: (texts) =>
-      oneAtATime(model, async (own) => {
+      oneAtATime(provider, async (own) => {
         const vectors: number[][] = [];
         for (let i = 0; i < texts.length; i += batchSize) {
           const { embeddings } = await embedOnce(
@@ -966,6 +977,7 @@ export async function createOllamaProvider(
         return vectors;
       }),
   };
+  return provider;
 }
 
 /**
@@ -973,11 +985,12 @@ export async function createOllamaProvider(
  * requests. Checks the longest few texts, which is where truncation would hit.
  */
 export function assertNotTruncated(
-  model: OllamaModel,
+  provider: OllamaProvider,
   texts: string[],
 ): Promise<void> {
+  const { model } = provider;
   const longest = [...texts].sort((a, b) => b.length - a.length).slice(0, 5);
-  return oneAtATime(model, async (own) => {
+  return oneAtATime(provider, async (own) => {
     for (const text of longest) {
       const { prompt_eval_count: tokens } = await embedOnce(own, model, [text]);
       if (typeof tokens !== "number" || !(tokens > 0)) {
@@ -1182,14 +1195,14 @@ Expected: `data/benchmark/calibration.json` has one row per model and `ollama ps
 
 **Step 4: Review and commit**
 
-A verdict flip is forgiven only when the absolute margin is below `HOST_NOISE_MARGIN` (0.01) on both hosts. Any other flip makes the model not interchangeable, however high the match rate is, and it gets separate rows. `calibration.json` lists forgiven and unforgiven flips separately. Stop and report to Alec if bge-large isn't interchangeable, since it's the app's model.
+A verdict flip is forgiven only when the absolute margin is below `HOST_NOISE_MARGIN` (0.01) on both hosts. Any other flip makes the model not interchangeable, however high the match rate is, and it gets separate rows. Forgiven flips can still lean one way, so the hosts' pass rates must also be within `MAX_PASS_RATE_GAP` (5 points) overall and `MAX_CATEGORY_PASS_RATE_GAP` (15 points) in every category. `calibration.json` lists forgiven and unforgiven flips separately, plus both gaps. Stop and report to Alec if bge-large isn't interchangeable, since it's the app's model.
 
 ```bash
 git add scripts/benchmark data/benchmark package.json
 git commit -m "Calibrate Ollama against Workers AI"
 ```
 
-**Result, 2026-11-05:** every model matched on all 102 triplets, with no flips to forgive, so each is interchangeable and needs one row. This covers bge-large with `cls` only; the app's `mean` pooling wasn't calibrated.
+**Result, 2026-11-05:** every model matched on all 102 triplets, with no flips to forgive and no pass rate gaps, so each is interchangeable and needs one row. This covers bge-large with `cls` only; the app's `mean` pooling wasn't calibrated.
 
 | Model | Mean cross-host cosine | Verdict match | Worst margin difference | Pass rate on both hosts |
 |---|---|---|---|---|
@@ -1206,6 +1219,7 @@ The cosines also suggest Workers AI adds no prompt of its own: not to qwen3's `t
 
 **Files:**
 - Create: `data/benchmark/triplets.jsonl`
+- Create: `data/benchmark/triplets-rejected.jsonl`
 - Create: `data/benchmark/context-sentences.json`
 - Create: `scripts/benchmark/validate.ts`
 - Test: `scripts/benchmark/validate.test.ts`
@@ -1221,7 +1235,8 @@ The cosines also suggest Workers AI adds no prompt of its own: not to qwen3's `t
 - Any field is empty, including `baseId`, or the id is duplicated.
 - A text produces no bag-of-words tokens. `scoreTriplet` would throw on its zero vector and put bag-of-words under `missing`.
 - Rows that share a `baseId` differ in category or anchor, or repeat a `contextSentences` value.
-- The category is unknown, two of the texts are identical, or a text has a curly apostrophe.
+- The category, `status` or `contextSentences` isn't an allowed value, two of the texts match once tokenized, or a text has a curly apostrophe.
+- An anchor repeats across different `baseId`s, compared by tokens.
 
 `validateContextSentences` needs at least 8 distinct sentences, each with tokens. `triplets.test.ts` runs both over the real data files.
 
@@ -1232,6 +1247,10 @@ Keep `status: "draft"`, with about 22 per category, and record judgement problem
 Selection rests on meaning and construction alone. Never embed the drafts with any model, and never use a model's score to choose or drop a triplet, because that would bias the benchmark.
 
 A separate reviewer writes an independent critique of each one, and records the reason for any flag. The drafter doesn't critique their own drafts.
+
+Merge the critique into `triplets.jsonl`: apply each fix's text, and add a `critique` field with the verdict and reason. Rejected rows move to `triplets-rejected.jsonl` with their reasons. Rows written to replace them have `"origin": "added-after-critique"`. Rows stay `status: "draft"`, and the same selection rule applies.
+
+The critique drew the entailment line: an edit that the anchor's claim merely implies against, such as not-all to none, is rejected. New negation-scope rows avoid neg-raising verbs (think, believe, want, plan, advise, choose) and not-all/none pairs.
 
 **Step 3: Publish the shortlist for review**
 
@@ -1274,13 +1293,15 @@ git commit -m "Add OpenRouter benchmark provider"
 **Files:**
 - Create: `scripts/benchmark/run.ts`
 - Create: `scripts/benchmark/paws.ts`
+- Create: `scripts/benchmark/context.ts`
+- Test: `scripts/benchmark/context.test.ts`
 - Test: `scripts/benchmark/report.test.ts`
 - Create: `data/benchmark/results.json`
 - Modify: `package.json`
 
 **Step 1: Write `run.ts`**
 
-Load approved triplets, expand them with context under the same `baseId`, and run each model in turn. Check the cache first, and only embed what's missing. Create each Ollama provider just before its session, since the provider's digest is checked when the session starts. Ollama models run inside `withExclusiveModel`. Call `embedBatch` in chunks and `put` after each chunk through `embedCached`, so progress survives a failure. A provider failure or a `scoreTriplet` throw puts that model under `missing` with its error, and the run continues. Skip the cache for `batchScoped` providers such as bag-of-words, and embed and score each triplet in its own batch.
+Load approved triplets, expand them with `withContext` under the same `baseId`, and run each model in turn. Filler goes before the text, with the same filler on all three versions. The 1 and 3 sentence versions use the last 1 and 3 filler sentences, so filler always directly precedes the text. Check the cache first, and only embed what's missing. Create each Ollama provider just before its session, since the provider's digest is checked when the session starts. Ollama models run inside `withExclusiveModel`. Call `embedBatch` in chunks and `put` after each chunk through `embedCached`, so progress survives a failure. A provider failure or a `scoreTriplet` throw puts that model under `missing` with its error, and the run continues. Skip the cache for `batchScoped` providers such as bag-of-words, and embed and score each triplet in its own batch.
 
 **Step 2: Test the report**
 

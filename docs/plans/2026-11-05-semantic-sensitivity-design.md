@@ -86,7 +86,7 @@ Disk is the tightest resource, with 23 GB free at 98% full. PAWS keeps pair simi
 
 The same model name doesn't guarantee the same vectors across hosts, because quantization, pooling and task prompts can differ.
 
-For each model on both Ollama and Workers AI, run about 100 triplets on both hosts and compare the vectors and the pass or fail verdicts. A verdict flip is forgiven only when the absolute margin is below `HOST_NOISE_MARGIN` (0.01) on both hosts, since a triplet that close to a tie can flip on noise. Any other flip means the model isn't interchangeable, however high its match rate. It then gets two rows, or the page says live scores can differ from the heatmap.
+For each model on both Ollama and Workers AI, run about 100 triplets on both hosts and compare the vectors and the pass or fail verdicts. A verdict flip is forgiven only when the absolute margin is below `HOST_NOISE_MARGIN` (0.01) on both hosts, since a triplet that close to a tie can flip on noise. Any other flip means the model isn't interchangeable, however high its match rate. The hosts' pass rates must also be within 5 points overall and 15 points in each category, since forgiven flips can all lean one way. A model that fails either test gets two rows, or the page says live scores can differ from the heatmap.
 
 Run on 2026-11-05 with 102 triplets: bge-large with `cls`, bge-m3, qwen3 and embeddinggemma all matched on every verdict, with a mean cross-host cosine of 0.99969 to 0.99999. Each gets one row. Before the main run, calibration repeats on the approved triplets at 8 sentences of context, because bare sentences don't prove this for longer text.
 
@@ -96,7 +96,8 @@ Run on 2026-11-05 with 102 triplets: bge-large with `cls`, bge-m3, qwen3 and emb
 - **Balance:** the paraphrase and the edit are about the same length.
 - **Swapped roles:** the edit uses exactly the same words as the anchor, so bag-of-words can't separate them.
 - **Paraphrases:** they must not simply copy the anchor with one word changed.
-- **Paragraphs:** each triplet gets the same neutral surrounding sentences on all three versions, with about 1, 3 and 8 sentences of context.
+- **Paragraphs:** filler goes before the triplet text, with the same filler on all three versions, at 1, 3 and 8 sentences of context. The shorter versions use the last 1 and 3 filler sentences, so filler always directly precedes the text.
+- **Entailment line:** an edit must make a clearly different claim. Not-all to none rows stay rejected, because 'none' entails 'not all' and only an implicature separates them.
 - **Format:** one JSONL file with base id, category, anchor, paraphrase, edit, review status and optional notes. Only approved rows reach the benchmark.
 - **Selection:** triplets are chosen on meaning and construction alone. Drafts are never embedded, and no model's score is used to choose or drop one.
 - **Outside check:** PAWS, run overnight through Ollama.
