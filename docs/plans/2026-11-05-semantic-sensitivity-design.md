@@ -38,7 +38,8 @@ Chosen on 2026-11-05. Hugging Face downloads and Ollama pulls are proxies for us
 | | Voyage 4 Large | OpenRouter |
 | | Gemini Embedding 2 | OpenRouter |
 | | EmbeddingGemma 2 | Ollama |
-| Live on the site | bge-large, mean and `cls` pooling | Ollama, Workers AI |
+| Live on the site | bge-large, `cls` pooling | Ollama, Workers AI |
+| | bge-large, mean pooling | Workers AI |
 | | qwen3-embedding-0.6b | Ollama, Workers AI |
 | | embeddinggemma (v1) | Ollama, Workers AI |
 | Floor | Bag-of-words | Local |
@@ -50,6 +51,33 @@ Chosen on 2026-11-05. Hugging Face downloads and Ollama pulls are proxies for us
 **Batch step.** `npm run benchmark` embeds every text with every model, caches vectors on disk, and writes a results JSON file. Reruns only pay for what changed, and progress is saved as it goes so a failed run can resume. Results are committed; vectors are not. [Concept orthogonality](../ideas/concept-orthogonality.md) can reuse the cache.
 
 **Page.** The heatmap and drill-down render from the results JSON. A new API route scores submitted sentences on the `live` models.
+
+## Running on Ollama
+
+Local runs share one laptop, so the runner must never make Ollama swap models:
+
+- Run one model at a time, with one request in flight. Finish all of a model's texts before moving on, and never interleave models.
+- Before starting a model, check `/api/ps`. If another model is loaded, wait for it to go. Don't unload something the runner didn't load.
+- After a model finishes, unload it with `keep_alive: 0` and confirm `/api/ps` is empty.
+- Read `prompt_eval_count` on every response and stop if a text hit the model's limit, because Ollama truncates silently.
+- Use each model's documented task prefixes, and record them with the results.
+
+Measured on 2026-11-05 on an M2 Max with 32 GB, at 53 to 125 short texts per second:
+
+| Model | Texts/s | Memory | Pooling | Truncates at (tokens) |
+|---|---|---|---|---|
+| all-minilm | 125 | 26 MB | mean | 256 |
+| nomic-embed-text | 102 | 336 MB | mean | over 1,297 |
+| embeddinggemma | 77 | 686 MB | mean | over 1,258 |
+| embeddinggemma-2 | 67 | 1.3 GB | not reported | over 1,258 |
+| bge-m3 | 62 | 689 MB | `cls` | over 1,379 |
+| bge-large | 62 | 625 MB | `cls` | 512 |
+| mxbai-embed-large | 60 | 625 MB | `cls` | 512 |
+| qwen3-embedding:0.6b | 53 | 4.8 GB | last token | over 1,257 |
+
+The core set is about 1,080 texts per model, which takes under 30 seconds per model. PAWS at about 200,000 texts would take about 6 hours across all eight, so it stays an overnight job. The 8-sentence paragraphs came to about 145 tokens, under every limit.
+
+Disk is the tightest resource, with 23 GB free at 98% full. Set `num_ctx` on qwen3 to cut its memory use.
 
 ## Calibration
 
@@ -97,5 +125,5 @@ Vitest covers scoring, ties, bootstrap, resuming a run, adapters with mocked pro
 ## Open questions
 
 - Does OpenRouter pass through settings like Cohere's `input_type`, and do its vectors match the direct APIs?
-- Are all-MiniLM-L6-v2, EmbeddingGemma 2 and the bge-large pooling settings as expected on Ollama? Ollama's pooling isn't confirmed.
+- Which task prefixes should nomic-embed-text, embeddinggemma, EmbeddingGemma 2 and qwen3 use?
 - Is the Cloudflare account on Workers Free or Workers Paid?
