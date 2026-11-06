@@ -11,13 +11,13 @@ const SENTENCE_SIMILARITY = "task: sentence similarity | query: ";
 
 export const OLLAMA_MODELS: OllamaModel[] = [
   {
-    // "No prefix": https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2
+    // The card mentions no prefix: https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2
     name: "all-minilm",
     prefix: "",
     maxTokens: 256,
   },
   {
-    // "Other cases, no instruction": https://huggingface.co/BAAI/bge-large-en-v1.5
+    // The instruction is for retrieval queries only: https://huggingface.co/BAAI/bge-large-en-v1.5
     name: "bge-large",
     prefix: "",
     maxTokens: 512,
