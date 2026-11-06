@@ -88,6 +88,8 @@ The same model name doesn't guarantee the same vectors across hosts, because qua
 
 For each model on both Ollama and Workers AI, run about 100 triplets on both hosts and compare the vectors and the pass or fail verdicts. A model counts as interchangeable only if the verdicts match. Otherwise it gets two rows, or the page says live scores can differ from the heatmap.
 
+Run on 2026-11-05 with 102 triplets: bge-large with `cls`, bge-m3, qwen3 and embeddinggemma all matched on every verdict, with a mean cross-host cosine of at least 0.9997. Each gets one row.
+
 ## Test set
 
 - **Categories:** negation, swapped roles, quantifiers, numbers, antonyms and negation scope, with about 15 triplets each.

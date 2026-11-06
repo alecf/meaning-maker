@@ -1100,6 +1100,10 @@ git commit -m "Add benchmark model registry"
 
 **Files:**
 - Create: `scripts/benchmark/calibrate.ts`
+- Create: `scripts/benchmark/calibration.ts`
+- Create: `scripts/benchmark/embedCached.ts`
+- Test: `scripts/benchmark/calibration.test.ts`
+- Test: `scripts/benchmark/embedCached.test.ts`
 - Create: `data/benchmark/calibration-triplets.jsonl`
 - Create: `data/benchmark/calibration.json`
 - Modify: `package.json`
@@ -1116,6 +1120,8 @@ For each of bge-large (`cls`), bge-m3, qwen3 and embeddinggemma:
 2. Embed everything on Ollama inside `withExclusiveModel`, after `assertNotTruncated`.
 3. Record the mean cosine between the hosts' vectors, the share of triplets with matching verdicts, and the worst margin difference.
 
+Keep the comparison in `compareHosts` (`calibration.ts`), so it can be tested without either host. Embed through `embedCached` (`embedCached.ts`), which saves after each chunk and returns vectors through the cache. Task 12 reuses it. Skip `assertNotTruncated` when everything is cached, so a rerun sends Ollama nothing.
+
 Add `"benchmark:calibrate": "node scripts/run.mjs scripts/benchmark/calibrate.ts"` to `package.json`.
 
 **Step 3: Run it**
@@ -1128,9 +1134,20 @@ Expected: `data/benchmark/calibration.json` has one row per model and `ollama ps
 If verdicts match on at least 95% of triplets, treat the model as interchangeable. Otherwise, it gets separate rows. Stop and report to Alec if bge-large doesn't match, since it's the app's model.
 
 ```bash
-git add scripts/benchmark/calibrate.ts data/benchmark package.json
+git add scripts/benchmark data/benchmark package.json
 git commit -m "Calibrate Ollama against Workers AI"
 ```
+
+**Result, 2026-11-05:** every model matched on all 102 triplets, so each is interchangeable and needs one row. This covers bge-large with `cls` only; the app's `mean` pooling wasn't calibrated.
+
+| Model | Mean cross-host cosine | Verdict match | Worst margin difference | Pass rate on both hosts |
+|---|---|---|---|---|
+| bge-large (`cls`) | 0.999992 | 100% | 0.00124 | 76.5% |
+| bge-m3 | 0.999994 | 100% | 0.00107 | 67.6% |
+| qwen3-embedding:0.6b | 0.999689 | 100% | 0.00566 | 50.0% |
+| embeddinggemma | 0.999994 | 100% | 0.00073 | 76.5% |
+
+The cosines also suggest Workers AI adds no prompt of its own: not to qwen3's `text` input, and not to embeddinggemma.
 
 ## Phase 3: test set and results
 
@@ -1204,7 +1221,7 @@ git commit -m "Add OpenRouter benchmark provider"
 
 **Step 1: Write `run.ts`**
 
-Load approved triplets, expand them with context under the same `baseId`, and run each model in turn. Check the cache first, and only embed what's missing. Ollama models run inside `withExclusiveModel`. Call `embedBatch` in chunks and `put` after each chunk, so progress survives a failure. A provider failure or a `scoreTriplet` throw puts that model under `missing` with its error, and the run continues. Skip the cache for `batchScoped` providers such as bag-of-words, and embed and score each triplet in its own batch.
+Load approved triplets, expand them with context under the same `baseId`, and run each model in turn. Check the cache first, and only embed what's missing. Ollama models run inside `withExclusiveModel`. Call `embedBatch` in chunks and `put` after each chunk through `embedCached`, so progress survives a failure. A provider failure or a `scoreTriplet` throw puts that model under `missing` with its error, and the run continues. Skip the cache for `batchScoped` providers such as bag-of-words, and embed and score each triplet in its own batch.
 
 **Step 2: Test the report**
 
