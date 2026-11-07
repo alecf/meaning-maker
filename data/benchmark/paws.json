@@ -1,0 +1,54 @@
+{
+  "split": "labeled_final",
+  "models": [
+    {
+      "model": "all-minilm",
+      "providerId": "{\"digest\":\"1b226e2802dbb772b5fc32a58f103ca1804ef7501331012de126ab22f67475ef\",\"host\":\"ollama\",\"name\":\"all-minilm\",\"prefix\":\"\"}",
+      "pairs": 65401,
+      "auc": 0.6337886542525162
+    },
+    {
+      "model": "bge-large",
+      "providerId": "{\"digest\":\"b3d71c92805938e2c9d78e6f35e82d7cc1bd77e05b47dd2ab3016240f4021c15\",\"host\":\"ollama\",\"name\":\"bge-large\",\"prefix\":\"\"}",
+      "pairs": 65401,
+      "auc": 0.6521342089083967
+    },
+    {
+      "model": "mxbai-embed-large",
+      "providerId": "{\"digest\":\"468836162de7f81e041c43663fedbbba921dcea9b9fefea135685a39b2d83dd8\",\"host\":\"ollama\",\"name\":\"mxbai-embed-large\",\"prefix\":\"\"}",
+      "pairs": 65401,
+      "auc": 0.67949657961491
+    },
+    {
+      "model": "bge-m3",
+      "providerId": "{\"digest\":\"7907646426070047a77226ac3e684fbbe8410524f7b4a74d02837e43f2146bab\",\"host\":\"ollama\",\"name\":\"bge-m3\",\"prefix\":\"\"}",
+      "pairs": 65401,
+      "auc": 0.65974362385176
+    },
+    {
+      "model": "nomic-embed-text",
+      "providerId": "{\"digest\":\"0a109f422b47e3a30ba2b10eca18548e944e8a23073ee3f3e947efcf3c45e59f\",\"host\":\"ollama\",\"name\":\"nomic-embed-text\",\"prefix\":\"clustering: \"}",
+      "pairs": 65401,
+      "auc": 0.6688417563728949
+    },
+    {
+      "model": "embeddinggemma",
+      "providerId": "{\"digest\":\"85462619ee721b466c5927d109d4cb765861907d5417b9109caebc4e614679f1\",\"host\":\"ollama\",\"name\":\"embeddinggemma\",\"prefix\":\"task: sentence similarity | query: \"}",
+      "pairs": 65401,
+      "auc": 0.6735856566844447
+    },
+    {
+      "model": "embeddinggemma-2",
+      "providerId": "{\"digest\":\"eaff2253e2bac3d274a149848ff2af480c47c42d28c81ee7b4ced9246e3d9ba0\",\"host\":\"ollama\",\"name\":\"embeddinggemma-2\",\"prefix\":\"task: sentence similarity | query: \"}",
+      "pairs": 65401,
+      "auc": 0.650744243423516
+    },
+    {
+      "model": "qwen3-embedding:0.6b",
+      "providerId": "{\"digest\":\"ac6da0dfba84a81fdbfbaf330198c33cd77c4cdfc53e8bc50eb581914a15621d\",\"host\":\"ollama\",\"name\":\"qwen3-embedding:0.6b\",\"options\":{\"num_ctx\":2048},\"prefix\":\"\"}",
+      "pairs": 65401,
+      "auc": 0.6919857335638512
+    }
+  ],
+  "missing": []
+}
