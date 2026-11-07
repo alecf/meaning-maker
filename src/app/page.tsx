@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Analyzer } from "./Analyzer";
 
 export default function Home() {
@@ -7,6 +8,7 @@ export default function Home() {
         <h1>Meaning Maker</h1>
         <nav aria-label="About">
           <a href="https://alecf.com/meaning-maker/">How it works</a>
+          <Link href="/benchmark">Model benchmark</Link>
           <a href="https://github.com/alecf/meaning-maker">Source</a>
         </nav>
       </header>
