@@ -100,7 +100,9 @@ export function ModelsRoom({
         </ul>
         {model.pawsAuc !== undefined && (
           <p className="profile-meta">
-            Outside check: {model.pawsAuc.toFixed(2)} on PAWS, where 0.5 is guessing and 1 is perfect.
+            PAWS, a public test of reordered sentences: {model.pawsAuc.toFixed(2)}, where 0.5
+            is guessing and 1 is perfect. Every model that took it scored about the same,
+            so this doesn&apos;t separate them. More under How this works.
           </p>
         )}
         {facts.possibleReason && (

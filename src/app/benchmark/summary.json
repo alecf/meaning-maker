@@ -456,7 +456,8 @@
             "count": 17
           }
         }
-      }
+      },
+      "pawsAuc": 0.6735856566844447
     },
     {
       "key": "mxbai-embed-large",
@@ -685,7 +686,8 @@
             "count": 17
           }
         }
-      }
+      },
+      "pawsAuc": 0.67949657961491
     },
     {
       "key": "bge-large",
@@ -914,7 +916,8 @@
             "count": 17
           }
         }
-      }
+      },
+      "pawsAuc": 0.6521342089083967
     },
     {
       "key": "bge-large (mean)",
@@ -1372,7 +1375,8 @@
             "count": 17
           }
         }
-      }
+      },
+      "pawsAuc": 0.65974362385176
     },
     {
       "key": "embeddinggemma-2",
@@ -1601,7 +1605,8 @@
             "count": 17
           }
         }
-      }
+      },
+      "pawsAuc": 0.650744243423516
     },
     {
       "key": "openai/text-embedding-3-large",
@@ -2517,7 +2522,8 @@
             "count": 17
           }
         }
-      }
+      },
+      "pawsAuc": 0.6919857335638512
     },
     {
       "key": "all-minilm",
@@ -2746,7 +2752,8 @@
             "count": 17
           }
         }
-      }
+      },
+      "pawsAuc": 0.6337886542525162
     },
     {
       "key": "openai/text-embedding-3-small",
@@ -3433,7 +3440,8 @@
             "count": 17
           }
         }
-      }
+      },
+      "pawsAuc": 0.6688417563728949
     },
     {
       "key": "bag-of-words",
