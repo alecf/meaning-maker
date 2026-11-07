@@ -21,5 +21,13 @@
 			// later deploys. Locally it is simulated and persisted in .wrangler/.
 			"binding": "EMBED_CACHE"
 		}
-	]
+	],
+	// Settings for `wrangler preview`, which Workers Builds runs on PR branches.
+	// Bindings aren't inherited. The KV cache is left out so previews can't
+	// write to production's cache; the API route runs uncached without it.
+	"previews": {
+		"ai": {
+			"binding": "AI"
+		}
+	}
 }
