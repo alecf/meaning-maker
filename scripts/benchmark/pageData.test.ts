@@ -90,6 +90,12 @@ describe("buildPageData", () => {
     expect(summary.examples).toHaveLength(1);
     expect(summary.examples[0].scores).toEqual([{ key: "m", margin: 0.5, passed: true }]);
   });
+  it("scores each kind of change at each context length", () => {
+    const { summary } = buildPageData(results(model("m", 0.5)), [triplet("a")]);
+    expect(summary.models[0].grid["0"].negation?.rate).toBe(1);
+    expect(summary.models[0].grid["8"].negation?.rate).toBe(0);
+    expect(summary.models[0].grid["8"].negation?.count).toBe(1);
+  });
   it("carries no PAWS without results", () => {
     const { summary } = buildPageData(results(model("m", 0.5)), [triplet("a")]);
     expect(summary.models[0]).not.toHaveProperty("pawsAuc");

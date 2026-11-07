@@ -29,7 +29,7 @@ export function MeaningMap() {
   const { caption, same, changed } = VIEWS[view];
   return (
     <figure className="map">
-      <fieldset className="toggle">
+      <fieldset className="segmented">
         <legend className="sr-only">Choose a view of the map</legend>
         {(Object.keys(VIEWS) as View[]).map((key) => (
           <button

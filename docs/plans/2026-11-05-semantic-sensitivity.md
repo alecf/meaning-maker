@@ -1344,7 +1344,7 @@ Confirmed means models differ clearly and consistently by category, and bag-of-w
 
 ## Phase 4: page
 
-Reviewed with Alec on 2026-11-06: the results count as confirmed, and the page should be visual first for someone curious about embeddings, with detail one click down. Built so far on `/benchmark`: a sketch of the idea, six example sentences, a scoreboard, category strips, the heatmap, filler small multiples and a drill-down, all from `npm run benchmark:page`. Rerun that after PAWS and the PAWS column appears. Tasks 13 and 14 below are done in that form; the live box is still to come.
+Reviewed with Alec on 2026-11-06: the results count as confirmed. The page is an interactive exhibit rather than a report, built around what models understand about language, not what was measured. `/benchmark` has four rooms: take the test yourself, see which models notice each kind of meaning (with a text-length slider), a profile per model, and how it works, with the full table. Evidence opens one example at a time. All of it comes from `npm run benchmark:page`, so rerun that after PAWS. Tasks 13 and 14 below are done in that form; the live box is still to come.
 
 - **Task 13: Heatmap.** `/benchmark` renders models by category from `results.json`, sized for 390 px and 1280 px, in light and dark.
 - **Task 14: Drill-down.** Clicking a cell shows the triplets passed and failed, with margins.

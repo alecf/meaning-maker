@@ -4,6 +4,7 @@ import type {
   PageModel,
   PageSummary,
 } from "@/app/benchmark/data";
+import { passRate } from "@/util/benchmark/scoring";
 import type { Availability } from "./models";
 import type { Summary } from "./report";
 import type { Category, Triplet } from "@/util/benchmark/types";
@@ -51,7 +52,7 @@ const SOURCES: Record<string, string> = {
 const APP_MODEL = "bge-large (mean)";
 
 /** Hand-picked to show the range, from sets every model gets to sets none do. */
-const EXAMPLE_IDS = ["ant-02", "neg-16", "num-15", "scope-13", "role-02", "num-11"];
+const EXAMPLE_IDS = ["ant-02", "neg-16", "quant-17", "num-11", "scope-13", "role-02"];
 
 function scoresAt(
   row: Results["models"][number],
@@ -69,6 +70,23 @@ function scoresAt(
     margins: found.map((score) => score.margin),
     passed: found.map((score) => (score.passed ? "1" : "0")).join(""),
   };
+}
+
+/** Each kind of change at each context length, for the page's slider. */
+function gridFor(row: Results["models"][number], triplets: Triplet[], contexts: number[]) {
+  const grid: PageModel["grid"] = {};
+  for (const context of contexts) {
+    const { passed } = scoresAt(row, triplets, context);
+    const cells: PageModel["grid"][string] = {};
+    for (const category of new Set(triplets.map((t) => t.category))) {
+      const results = triplets.flatMap((t, i) =>
+        t.category === category ? [passed[i] === "1"] : [],
+      );
+      cells[category] = { ...passRate(results), count: results.length };
+    }
+    grid[context] = cells;
+  }
+  return grid;
 }
 
 /** Splits results into what every visit needs and what only a click needs. */
@@ -89,6 +107,7 @@ export function buildPageData(
       overall: row.overall,
       categories: row.categories,
       contexts: { "0": row.overall, ...row.byContext },
+      grid: gridFor(row, triplets, [0, ...Object.keys(row.byContext).map(Number)]),
       ...(pawsAuc !== undefined && { pawsAuc }),
     };
   });

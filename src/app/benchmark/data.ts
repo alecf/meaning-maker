@@ -14,6 +14,8 @@ export interface PageModel {
   categories: Partial<Record<Category, CountedInterval>>;
   /** Keyed by sentences of filler, including 0. */
   contexts: Record<string, CountedInterval>;
+  /** Sentences of filler, then kind of change. */
+  grid: Record<string, Partial<Record<Category, CountedInterval>>>;
   /** ROC AUC on PAWS, once it has run for this model. */
   pawsAuc?: number;
 }
