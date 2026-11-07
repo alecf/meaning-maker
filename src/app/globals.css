@@ -942,6 +942,10 @@ textarea {
   );
 }
 
+.profile h2 a {
+  color: inherit;
+}
+
 .profile h2 {
   margin: 0;
   font-size: clamp(1.5rem, 4vw, 2.1rem);
@@ -949,10 +953,22 @@ textarea {
 }
 
 .profile-meta {
-  margin: 0.2rem 0 0.75rem;
+  margin: 0.15rem 0;
   font-family: var(--sans);
   font-size: 0.9rem;
   color: var(--ink-3);
+}
+
+.profile-about {
+  margin: 0.5rem 0;
+}
+
+.profile-reason {
+  margin: 0.75rem 0 0;
+  padding: 0.5rem 0.7rem;
+  border-left: 3px solid var(--rule);
+  font-size: 0.95rem;
+  color: var(--ink-2);
 }
 
 .profile-line {

@@ -7,8 +7,6 @@ export interface CountedInterval extends Interval {
 export interface PageModel {
   key: string;
   name: string;
-  /** How it ran, in words. */
-  source: string;
   usedByApp: boolean;
   overall: CountedInterval;
   categories: Partial<Record<Category, CountedInterval>>;

@@ -5,6 +5,7 @@ import type { PageModel, PageSummary } from "./data";
 import type { EvidenceRequest } from "./Evidence";
 import { SKILL_ORDER, SKILLS } from "./labels";
 import { LengthControl } from "./LengthControl";
+import { MODEL_FACTS } from "./modelFacts";
 import { VERDICT_NAMES, VERDICT_ORDER, verdictFor } from "./verdict";
 
 function Fingerprint({ model, context }: { model: PageModel; context: number }) {
@@ -41,6 +42,7 @@ export function ModelsRoom({
   onEvidence(request: EvidenceRequest): void;
 }) {
   const model = summary.models.find((m) => m.key === modelKey) ?? summary.models[0];
+  const facts = MODEL_FACTS[model.key];
   const skills = SKILL_ORDER.flatMap((skill: Category) => {
     const rate = model.grid[context][skill]?.rate;
     return rate === undefined ? [] : [{ skill, rate, verdict: verdictFor(rate) }];
@@ -61,11 +63,16 @@ export function ModelsRoom({
         </ul>
       </div>
       <div className="profile">
-        <h2>{model.name}</h2>
+        <h2>{facts.link ? <a href={facts.link}>{model.name}</a> : model.name}</h2>
         <p className="profile-meta">
-          {model.source}
-          {model.usedByApp && ". Meaning Maker uses this model to compare your sentences"}
+          {facts.maker}
+          {facts.year && `, ${facts.year}`}. {facts.size}.
         </p>
+        <p className="profile-meta">{facts.access}.</p>
+        {model.usedByApp && (
+          <p className="profile-meta">Meaning Maker uses this model to compare your sentences.</p>
+        )}
+        <p className="profile-about">{facts.about}</p>
         {VERDICT_ORDER.map((verdict) => {
           const names = skills
             .filter((s) => s.verdict === verdict)
@@ -94,6 +101,12 @@ export function ModelsRoom({
         {model.pawsAuc !== undefined && (
           <p className="profile-meta">
             Outside check: {model.pawsAuc.toFixed(2)} on PAWS, where 0.5 is guessing and 1 is perfect.
+          </p>
+        )}
+        {facts.possibleReason && (
+          <p className="profile-reason">
+            <strong>A possible reason:</strong> {facts.possibleReason} This is our guess.
+            No model card discusses these skills.
           </p>
         )}
         <LengthControl contexts={summary.contexts} context={context} onChange={onContext} />

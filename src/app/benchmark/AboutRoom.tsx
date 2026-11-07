@@ -52,8 +52,8 @@ export function AboutRoom({
           scores may depend on that choice.
         </li>
         <li>
-          Hosted models were reached through OpenRouter, and their results
-          haven&apos;t been compared with the vendors&apos; own APIs.
+          Paid models were reached through OpenRouter, which resells model APIs.
+          Their results haven&apos;t been compared with the vendors&apos; own.
         </li>
         {!hasPaws && (
           <li>

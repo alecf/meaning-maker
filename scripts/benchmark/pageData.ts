@@ -42,13 +42,6 @@ const NAMES: Record<string, string> = {
   "google/gemini-embedding-2": "Gemini Embedding 2",
 };
 
-const SOURCES: Record<string, string> = {
-  local: "Baseline",
-  "workers-ai": "Open, on Workers AI",
-  ollama: "Open, run locally",
-  openrouter: "Hosted API",
-};
-
 const APP_MODEL = "bge-large (mean)";
 
 /** Hand-picked to show the range, from sets every model gets to sets none do. */
@@ -102,7 +95,6 @@ export function buildPageData(
     return {
       key: row.model,
       name: NAMES[row.model] ?? row.model,
-      source: SOURCES[row.host] ?? row.host,
       usedByApp: row.model === APP_MODEL,
       overall: row.overall,
       categories: row.categories,
