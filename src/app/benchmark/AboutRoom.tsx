@@ -5,6 +5,7 @@ import type { PageSummary } from "./data";
 import type { EvidenceRequest } from "./Evidence";
 import { SKILL_ORDER, SKILLS } from "./labels";
 import { MeaningMap } from "./MeaningMap";
+import { pawsSpread } from "./paws";
 
 export function AboutRoom({
   summary,
@@ -14,7 +15,8 @@ export function AboutRoom({
   onEvidence(request: EvidenceRequest): void;
 }) {
   const skills = SKILL_ORDER.filter((c: Category) => summary.categories.includes(c));
-  const hasPaws = summary.models.some((model) => model.pawsAuc !== undefined);
+  const paws = pawsSpread(summary.models);
+  const hasPaws = paws !== undefined;
   return (
     <section className="room about">
       <h2>How this works</h2>
@@ -55,7 +57,18 @@ export function AboutRoom({
           Paid models were reached through OpenRouter, which resells model APIs.
           Their results haven&apos;t been compared with the vendors&apos; own.
         </li>
-        {!hasPaws && (
+        {paws ? (
+          <li>
+            We also ran PAWS, a public set of sentence pairs built by moving words
+            around, like &ldquo;the dog bit the man&rdquo; and &ldquo;the man bit the
+            dog&rdquo;. Only the {paws.count} models that run on a laptop took it. All
+            scored between {paws.min.toFixed(2)} and {paws.max.toFixed(2)}, where 0.5
+            is guessing and 1 is perfect, and their order barely matches ours. So it
+            doesn&apos;t confirm the ranking here. It does fit the swapped-roles
+            results, where no model does well, though we haven&apos;t checked that
+            this is the reason.
+          </li>
+        ) : (
           <li>
             An outside check on PAWS, a public paraphrase dataset, is still to come.
           </li>

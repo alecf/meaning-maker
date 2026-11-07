@@ -14,11 +14,12 @@ export async function POST(request: Request) {
   const paragraphs = await extractParagraphs(body);
 
   const { env } = await getCloudflareContext({ async: true });
-  const { AI, EMBED_CACHE } = env;
-  const embedder = withEmbeddingCache(
-    createWorkersAIEmbedder(AI),
-    createKVEmbeddingCache(EMBED_CACHE),
-  );
+  const { AI } = env;
+  // Preview deployments get no KV namespace (see `previews` in wrangler.jsonc),
+  // so they embed without the cache rather than sharing production's.
+  const cache: KVNamespace | undefined = env.EMBED_CACHE;
+  const workersAI = createWorkersAIEmbedder(AI);
+  const embedder = cache ? withEmbeddingCache(workersAI, createKVEmbeddingCache(cache)) : workersAI;
 
   const response: SentenceInfo[][] = await getAllSentences(
     paragraphs,

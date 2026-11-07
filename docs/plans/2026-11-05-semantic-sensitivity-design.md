@@ -153,6 +153,12 @@ Run on 2026-11-06, with 16 models and none missing. The idea's kill criteria loo
 
 The prefixes and `input_type` values are judgement calls, and nomic's, Cohere's and Gemini's could matter. Never pick them by score.
 
+## PAWS results
+
+Run on 2026-11-07 over all 65,401 PAWS Wiki labelled pairs, for the eight Ollama models, in about 7 hours rather than the 6 estimated. ROC AUC ranges only from 0.63 (all-MiniLM) to 0.69 (Qwen3 0.6B). The order barely matches the triplet ranking: Spearman 0.26 across the eight. nomic scores 0.67 on PAWS but 10% on triplets, and Qwen3 tops PAWS at 49% on triplets.
+
+PAWS pairs are built by moving words around, which is close to swapped roles, where no model passes more than 11%. That may be why every model lands near the same score, but it hasn't been tested. So PAWS doesn't confirm the triplet ranking, and the page says so.
+
 ## Open questions
 
 - Do OpenRouter's vectors match the direct APIs? Unverified, because there's no direct key. The page must say so.

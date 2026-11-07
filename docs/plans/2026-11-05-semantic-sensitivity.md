@@ -1327,7 +1327,7 @@ Download the PAWS Wiki labelled set to `.benchmark-cache/paws/` and check its ro
 
 **Step 6: Run PAWS overnight**
 
-This needs about 6 hours. Run it only when Alec says the laptop is free. Check free disk space first.
+This needs about 6 hours. Run it only when Alec says the laptop is free. Check free disk space first. Done on 2026-11-07 in about 7 hours; results are in the design doc under PAWS results.
 
 **Step 7: Commit**
 
