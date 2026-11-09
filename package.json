@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "@huggingface/tokenizers": "^0.2.0",
-    "@opennextjs/cloudflare": "^1.20.15",
+    "@opennextjs/cloudflare": "^1.20.16",
     "@types/node": "26.6.6",
     "@types/react": "18.3.12",
     "@types/react-dom": "18.3.1",
@@ -48,7 +48,7 @@
     "@types/hast": "^3.0.5",
     "@types/mdast": "^4.0.4",
     "vitest": "^5.1.0",
-    "wrangler": "^4.157.0",
+    "wrangler": "^4.158.0",
     "yaml": "^2.9.1"
   }
 }
