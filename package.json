@@ -28,7 +28,7 @@
     "@types/node": "26.6.6",
     "@types/react": "18.3.12",
     "@types/react-dom": "18.3.1",
-    "ai": "^7.0.163",
+    "ai": "^7.0.172",
     "dataloader": "^2.2.3",
     "hast-util-to-jsx-runtime": "^2.3.7",
     "next": "16.4.5",
@@ -38,7 +38,7 @@
     "remark-gfm": "^4.0.1",
     "remark-parse": "^11.0.0",
     "remark-rehype": "^11.1.2",
-    "sentence-splitter": "^5.0.1",
+    "sentence-splitter": "^5.0.3",
     "typescript": "7.0.2",
     "unified": "^11.0.5",
     "workers-ai-provider": "^4.0.1"
